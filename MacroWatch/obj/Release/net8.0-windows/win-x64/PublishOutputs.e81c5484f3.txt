@@ -1,0 +1,2 @@
+C:\Users\renow\Documents\Codex\2026-06-12\build-a-windows-system-tray-application\outputs\MacroWatch\bin\Release\net8.0-windows\win-x64\publish\MacroWatch.pdb
+C:\Users\renow\Documents\Codex\2026-06-12\build-a-windows-system-tray-application\outputs\MacroWatch\bin\Release\net8.0-windows\win-x64\publish\MacroWatch.exe

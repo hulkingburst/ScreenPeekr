@@ -1,0 +1,16 @@
+{
+  "version": 2,
+  "dgSpecHash": "8broyFpDy4Q=",
+  "success": true,
+  "projectFilePath": "C:\\Users\\renow\\Documents\\Codex\\2026-06-12\\build-a-windows-system-tray-application\\outputs\\MacroWatch\\MacroWatch.csproj",
+  "expectedPackageFiles": [
+    "C:\\Users\\renow\\.nuget\\packages\\microsoft.net.illink.tasks\\8.0.26\\microsoft.net.illink.tasks.8.0.26.nupkg.sha512",
+    "C:\\Users\\renow\\.nuget\\packages\\system.codedom\\8.0.0\\system.codedom.8.0.0.nupkg.sha512",
+    "C:\\Users\\renow\\.nuget\\packages\\system.management\\8.0.0\\system.management.8.0.0.nupkg.sha512",
+    "C:\\Users\\renow\\.nuget\\packages\\microsoft.netcore.app.runtime.win-x64\\8.0.26\\microsoft.netcore.app.runtime.win-x64.8.0.26.nupkg.sha512",
+    "C:\\Users\\renow\\.nuget\\packages\\microsoft.windowsdesktop.app.runtime.win-x64\\8.0.26\\microsoft.windowsdesktop.app.runtime.win-x64.8.0.26.nupkg.sha512",
+    "C:\\Users\\renow\\.nuget\\packages\\microsoft.aspnetcore.app.runtime.win-x64\\8.0.26\\microsoft.aspnetcore.app.runtime.win-x64.8.0.26.nupkg.sha512",
+    "C:\\Users\\renow\\.nuget\\packages\\microsoft.netcore.app.crossgen2.win-x64\\8.0.26\\microsoft.netcore.app.crossgen2.win-x64.8.0.26.nupkg.sha512"
+  ],
+  "logs": []
+}
