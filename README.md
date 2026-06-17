@@ -1,4 +1,4 @@
-# MacroWatch
+# MacroWatch v2.0.0
 
 A minimal Windows system tray utility for unattended game or Roblox monitoring.
 
@@ -9,10 +9,22 @@ MacroWatch periodically captures one selected monitor at native resolution and u
 - 🪟 Windows system tray integration
 - 📸 Periodic monitor screenshot capture
 - 🔗 Discord webhook uploads
-- ⚙️ Configurable capture interval (minimum 15 seconds)
-- 🖥️ Multi-monitor support
+- ⚙️ Configurable capture interval (minimum 5 seconds)
+- 🖥️ Multi-monitor support with friendly names
 - 📝 Local logging and configuration storage
 - 🔄 Auto-startup with Windows option
+- ⌨️ **NEW in v2.0:** Pre-screenshot input simulation (send keyboard input before capture)
+- ⏱️ **NEW in v2.0:** Configurable input delay
+- 🎯 **NEW in v2.0:** Virtual screen capture support (all monitors at once)
+
+## What's New in v2.0.0
+
+- **Pre-Screenshot Input**: Optionally send a keyboard input (e.g., Alt+Tab, Space) before each screenshot capture
+- **Input Delay Configuration**: Set a delay between sending input and capturing the screenshot
+- **Virtual Screen Support**: Capture all monitors combined as a single image
+- **Minimum Interval Reduced**: Changed from 15 seconds to 5 seconds for more frequent captures
+- **Improved Monitor Detection**: Better WMI-based friendly name resolution with fallbacks
+- **Enhanced Configuration**: New config options stored alongside existing settings
 
 ## Quick Start
 
@@ -20,8 +32,10 @@ MacroWatch periodically captures one selected monitor at native resolution and u
 2. Run `MacroWatch.exe` - it will appear in your system tray
 3. Right-click the tray icon and set your Discord webhook URL
 4. Configure the capture interval
-5. Select your monitor
-6. Toggle monitoring ON/OFF from the tray menu
+5. (Optional) Set pre-screenshot input if you need to send a key before each capture
+6. (Optional) Adjust input delay if needed
+7. Select your monitor
+8. Toggle monitoring ON/OFF from the tray menu
 
 ## Installation from Source
 
@@ -43,14 +57,22 @@ dotnet publish .\MacroWatch.csproj -c Release -r win-x64 --self-contained false 
 
 The executable will be in `bin\Release\net8.0-windows\win-x64\publish\MacroWatch.exe`
 
+Build a self-contained executable (no .NET runtime required):
+
+```powershell
+dotnet publish .\MacroWatch.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:PublishReadyToRun=true
+```
+
 ## Configuration
 
-Settings are stored in `%LOCALAPPDATA%\MacroWatch\` with the following options:
+Settings are stored in `%LOCALAPPDATA%\MacroWatch\config.txt` with the following options:
 
 - `webhook_url` - Discord webhook URL for uploading screenshots
-- `interval_seconds` - Capture interval in seconds (minimum 15)
-- `selected_monitor` - Selected monitor device identifier
-- `start_with_windows` - Auto-launch on Windows startup
+- `interval_seconds` - Capture interval in seconds (minimum 5)
+- `selected_monitor` - Selected monitor device identifier (or "ALL" for virtual screen)
+- `start_with_windows` - Auto-launch on Windows startup (true/false)
+- `pre_screenshot_key` - Keyboard key to send before capture (Keys enum name or numeric value)
+- `input_delay_ms` - Delay in milliseconds between sending input and capturing (default 250)
 
 ## Discord Webhook Setup
 
@@ -60,6 +82,29 @@ Settings are stored in `%LOCALAPPDATA%\MacroWatch\` with the following options:
 4. In MacroWatch, right-click the tray icon and choose `Set Webhook...`
 5. Use `Take Screenshot Now` to verify
 
+## Tray Menu
+
+```
+MacroWatch
+─────────────────────────────────
+Status: OFF/ON/ERROR
+
+Toggle ON/OFF
+Set Webhook...
+Set Interval...
+Select Monitor...
+Set Pre-Screenshot Input...
+Set Input Delay...
+
+Take Screenshot Now
+
+Show Log
+
+Start With Windows ✓
+
+Exit
+```
+
 ## Behavior
 
 - Starts in the system tray (no main window)
@@ -68,6 +113,25 @@ Settings are stored in `%LOCALAPPDATA%\MacroWatch\` with the following options:
 - When enabled, sends a screenshot immediately, then continues on the configured interval
 - Upload failures are logged locally and indicated by the red tray icon
 - Manual screenshots can be sent anytime via the tray menu
+- Pre-screenshot input is only sent when monitoring is enabled and a key is configured
+- Temporary PNG files are deleted after upload
+- Monitor friendly names are resolved from Windows device information
+
+## Version History
+
+### v2.0.0 (Current)
+- Added pre-screenshot input simulation
+- Added configurable input delay
+- Added virtual screen support ("ALL" monitors capture)
+- Reduced minimum interval from 15 to 5 seconds
+- Improved monitor friendly name detection
+
+### v1.0.0
+- Initial release
+- Basic screenshot capture and Discord upload
+- System tray integration
+- Multi-monitor support
+- Configuration and logging
 
 ## Minimal by Design
 
