@@ -2,7 +2,7 @@
 
 ScreenPeekr is a minimal Windows system tray utility for unattended game or Roblox monitoring. It periodically captures one selected monitor at native resolution and uploads a PNG screenshot to a Discord webhook.
 
-There is no dashboard, account system, OCR, AI, video recording, multi-monitor capture, quality setting, resolution setting, scheduler, pause timer, or Discord error notification path.
+There is no dashboard, account system, OCR, AI, video recording, quality setting, resolution setting, scheduler, pause timer, or Discord error notification path.
 
 ## Tray Menu
 
