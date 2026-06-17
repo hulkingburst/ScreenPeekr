@@ -37,6 +37,25 @@ internal static class InputSimulator
     [DllImport("user32.dll")]
     public static extern IntPtr GetForegroundWindow();
 
+    public static async Task SendKeysAsync(IEnumerable<System.Windows.Forms.Keys> keys, int delayMs, int holdDurationMs, CancellationToken cancellationToken)
+    {
+        foreach (var key in keys.Where(key => key != System.Windows.Forms.Keys.None))
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            SendKeyDown((ushort)key);
+            if (holdDurationMs > 0)
+            {
+                await Task.Delay(holdDurationMs, cancellationToken);
+            }
+
+            SendKeyUp((ushort)key);
+            if (delayMs > 0)
+            {
+                await Task.Delay(delayMs, cancellationToken);
+            }
+        }
+    }
+
     public static void SendKey(ushort virtualKeyCode)
     {
         var inputs = new INPUT[2];
@@ -76,5 +95,44 @@ internal static class InputSimulator
         };
 
         SendInput(2, inputs, Marshal.SizeOf(typeof(INPUT)));
+    }
+
+    private static void SendKeyDown(ushort virtualKeyCode)
+    {
+        SendInput(1, new[]
+        {
+            new INPUT
+            {
+                type = INPUT_KEYBOARD,
+                u = new INPUTUnion
+                {
+                    ki = new KEYBDINPUT
+                    {
+                        wVk = virtualKeyCode,
+                        dwExtraInfo = IntPtr.Zero
+                    }
+                }
+            }
+        }, Marshal.SizeOf(typeof(INPUT)));
+    }
+
+    private static void SendKeyUp(ushort virtualKeyCode)
+    {
+        SendInput(1, new[]
+        {
+            new INPUT
+            {
+                type = INPUT_KEYBOARD,
+                u = new INPUTUnion
+                {
+                    ki = new KEYBDINPUT
+                    {
+                        wVk = virtualKeyCode,
+                        dwFlags = KEYEVENTF_KEYUP,
+                        dwExtraInfo = IntPtr.Zero
+                    }
+                }
+            }
+        }, Marshal.SizeOf(typeof(INPUT)));
     }
 }

@@ -29,19 +29,32 @@ internal sealed class LogWindow : Form
             ? "All Monitors"
             : selectedMonitor;
 
-        var keyText = config.PreScreenshotKey == System.Windows.Forms.Keys.None 
-            ? "None" 
-            : config.PreScreenshotKey.ToString();
+        var preKeysText = config.PreScreenshotKeys.Count == 0
+            ? "None"
+            : string.Join(", ", config.PreScreenshotKeys);
+        var postKeysText = config.PostScreenshotKeys.Count == 0
+            ? "None"
+            : string.Join(", ", config.PostScreenshotKeys);
 
         var lines = new List<string>
         {
             $"Status: {status}",
             $"Selected Monitor: {monitorText}",
             $"Interval: {config.IntervalSeconds} seconds",
-            $"Pre-screenshot Input Key: {keyText}",
+            $"Change Sensitivity: {config.ChangeDetectionSensitivity}",
+            $"Away-Only Mode: {config.AwayOnlyMode}",
+            $"Away Idle Threshold: {config.AwayIdleThresholdSeconds} seconds",
+            $"Pre-screenshot Inputs: {preKeysText}",
+            $"Post-screenshot Inputs: {postKeysText}",
             $"Input Delay: {config.InputDelayMs} ms",
+            $"Key Hold Duration: {config.KeyHoldDurationMs} ms",
+            $"Screenshot Retention: {config.ScreenshotRetentionDays} days, {config.ScreenshotRetentionCount} files",
+            $"Webhook Healthy: {stats.WebhookHealthy}",
             $"Screenshots Sent: {stats.ScreenshotsSent}",
+            $"Skipped No Change: {stats.ScreenshotsSkippedNoChange}",
+            $"Skipped User Active: {stats.ScreenshotsSkippedActive}",
             $"Upload Errors: {stats.UploadErrors}",
+            $"Consecutive Upload Failures: {stats.ConsecutiveUploadFailures}",
             $"Last Upload Time: {(stats.LastUploadTime.HasValue ? stats.LastUploadTime.Value.ToString("yyyy-MM-dd HH:mm:ss") : "Never")}",
             string.Empty,
             "Events:",

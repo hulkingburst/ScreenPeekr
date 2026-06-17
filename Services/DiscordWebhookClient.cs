@@ -8,6 +8,20 @@ internal sealed class DiscordWebhookClient : IDisposable
 {
     private readonly HttpClient _client = new();
 
+    public async Task ValidateWebhookAsync(string webhookUrl, CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(webhookUrl))
+        {
+            throw new InvalidOperationException("Discord webhook URL is not configured.");
+        }
+
+        using var response = await _client.GetAsync(webhookUrl, cancellationToken);
+        if (!response.IsSuccessStatusCode)
+        {
+            throw new HttpRequestException($"Webhook validation failed: {(int)response.StatusCode} {response.ReasonPhrase}");
+        }
+    }
+
     public async Task UploadScreenshotAsync(string webhookUrl, string imagePath, string title, CancellationToken cancellationToken)
     {
         if (string.IsNullOrWhiteSpace(webhookUrl))

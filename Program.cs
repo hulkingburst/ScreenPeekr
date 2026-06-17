@@ -15,11 +15,13 @@ internal static class Program
         using var eventLog = new EventLogStore(configStore.AppDataDirectory);
         using var startup = new StartupService();
         using var monitorCatalog = new MonitorCatalog();
-        using var capture = new ScreenshotCaptureService();
+        var cleanup = new ScreenshotCleanupService(configStore.AppDataDirectory);
+        using var capture = new ScreenshotCaptureService(cleanup);
         using var uploader = new DiscordWebhookClient();
+        var changeDetector = new ScreenshotChangeDetector();
 
         eventLog.Record("App started");
-        Application.Run(new ScreenPeekrApplicationContext(configStore, eventLog, startup, monitorCatalog, capture, uploader));
+        Application.Run(new ScreenPeekrApplicationContext(configStore, eventLog, startup, monitorCatalog, capture, uploader, changeDetector, cleanup));
         eventLog.Record("App exited");
     }
 }

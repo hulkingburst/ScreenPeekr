@@ -11,14 +11,17 @@ internal sealed class ScreenPeekrApplicationContext : ApplicationContext
     private readonly MonitorCatalog _monitorCatalog;
     private readonly ScreenshotCaptureService _capture;
     private readonly DiscordWebhookClient _uploader;
+    private readonly ScreenshotChangeDetector _changeDetector;
+    private readonly ScreenshotCleanupService _cleanup;
     private readonly RuntimeStats _stats = new();
     private readonly NotifyIcon _notifyIcon;
-    
+
     private Task? _monitoringTask;
     private CancellationTokenSource? _monitoringCancellation;
     private CancellationTokenSource _intervalChangeCts = new();
     private bool _monitoring;
     private bool _uploadInProgress;
+    private bool _usingMonitorFallback;
     private TrayState _trayState = TrayState.Off;
 
     public ScreenPeekrApplicationContext(
@@ -27,7 +30,9 @@ internal sealed class ScreenPeekrApplicationContext : ApplicationContext
         StartupService startup,
         MonitorCatalog monitorCatalog,
         ScreenshotCaptureService capture,
-        DiscordWebhookClient uploader)
+        DiscordWebhookClient uploader,
+        ScreenshotChangeDetector changeDetector,
+        ScreenshotCleanupService cleanup)
     {
         _configStore = configStore;
         _eventLog = eventLog;
@@ -35,6 +40,8 @@ internal sealed class ScreenPeekrApplicationContext : ApplicationContext
         _monitorCatalog = monitorCatalog;
         _capture = capture;
         _uploader = uploader;
+        _changeDetector = changeDetector;
+        _cleanup = cleanup;
 
         if (string.IsNullOrWhiteSpace(_configStore.Config.SelectedMonitor))
         {
@@ -71,7 +78,16 @@ internal sealed class ScreenPeekrApplicationContext : ApplicationContext
         menu.Items.Add(new ToolStripMenuItem("Set Interval...", null, (_, _) => SetInterval()));
         menu.Items.Add(new ToolStripMenuItem("Select Monitor...", null, (_, _) => SelectMonitor()));
         menu.Items.Add(new ToolStripMenuItem("Set Pre-Screenshot Input...", null, (_, _) => SetPreScreenshotInput()));
+        menu.Items.Add(new ToolStripMenuItem("Set Post-Screenshot Inputs...", null, (_, _) => SetPostScreenshotInputs()));
         menu.Items.Add(new ToolStripMenuItem("Set Input Delay...", null, (_, _) => SetInputDelay()));
+        menu.Items.Add(new ToolStripMenuItem("Set Key Hold Duration...", null, (_, _) => SetKeyHoldDuration()));
+        menu.Items.Add(new ToolStripMenuItem("Set Change Sensitivity...", null, (_, _) => SetChangeSensitivity()));
+        menu.Items.Add(new ToolStripMenuItem("Away-Only Mode", null, (_, _) => ToggleAwayOnlyMode())
+        {
+            Checked = _configStore.Config.AwayOnlyMode
+        });
+        menu.Items.Add(new ToolStripMenuItem("Set Away Idle Threshold...", null, (_, _) => SetAwayIdleThreshold()));
+        menu.Items.Add(new ToolStripMenuItem("Set Screenshot Retention...", null, (_, _) => SetScreenshotRetention()));
         menu.Items.Add(new ToolStripSeparator());
         menu.Items.Add(new ToolStripMenuItem("Take Screenshot Now", null, async (_, _) => await SendScreenshotAsync(manual: true)));
         menu.Items.Add(new ToolStripSeparator());
@@ -93,14 +109,37 @@ internal sealed class ScreenPeekrApplicationContext : ApplicationContext
             return;
         }
 
+        if (string.IsNullOrWhiteSpace(_configStore.Config.WebhookUrl))
+        {
+            _eventLog.Record("Monitoring blocked: webhook URL is not configured");
+            SetTrayState(TrayState.Error);
+            return;
+        }
+
+        using (var validationCts = new CancellationTokenSource(TimeSpan.FromSeconds(10)))
+        {
+            try
+            {
+                await _uploader.ValidateWebhookAsync(_configStore.Config.WebhookUrl, validationCts.Token);
+                _stats.WebhookHealthy = true;
+                _stats.ConsecutiveUploadFailures = 0;
+                _eventLog.Record("Webhook validation passed");
+            }
+            catch (Exception ex)
+            {
+                _stats.WebhookHealthy = false;
+                _eventLog.Record($"Webhook validation failed; monitoring will retry uploads: {ex.Message}");
+                SetTrayState(TrayState.Error);
+            }
+        }
+
         _monitoring = true;
         _monitoringCancellation?.Dispose();
         _monitoringCancellation = new CancellationTokenSource();
+        _changeDetector.Reset();
         _eventLog.Record("Monitoring enabled");
-        SetTrayState(TrayState.On);
+        SetTrayState(_stats.WebhookHealthy ? TrayState.On : TrayState.Error);
 
-        // Bug fix: send first screenshot immediately before entering the timed loop,
-        // as documented: "sends one screenshot immediately, then continues on the configured interval."
         var token = _monitoringCancellation.Token;
         _monitoringTask = Task.Run(async () =>
         {
@@ -112,6 +151,7 @@ internal sealed class ScreenPeekrApplicationContext : ApplicationContext
             {
                 _eventLog.Record($"Cycle error: {ex.Message}");
             }
+
             await RunMonitoringLoopAsync(token);
         }, token);
     }
@@ -131,13 +171,14 @@ internal sealed class ScreenPeekrApplicationContext : ApplicationContext
             }
             catch
             {
-                // Ignore task cancellation exceptions
             }
+
             _monitoringTask = null;
         }
 
         _monitoringCancellation?.Dispose();
         _monitoringCancellation = null;
+        _changeDetector.Reset();
         _eventLog.Record("Monitoring disabled");
         SetTrayState(TrayState.Off);
     }
@@ -157,7 +198,7 @@ internal sealed class ScreenPeekrApplicationContext : ApplicationContext
                 {
                     break;
                 }
-                // Interval changed — restart the wait loop without taking a screenshot
+
                 continue;
             }
 
@@ -180,81 +221,48 @@ internal sealed class ScreenPeekrApplicationContext : ApplicationContext
         }
 
         _uploadInProgress = true;
+        string? screenshotPath = null;
         try
         {
-            var preInputKey = _configStore.Config.PreScreenshotKey;
-            if (preInputKey != Keys.None)
+            if (_configStore.Config.AwayOnlyMode)
             {
-                var activeWindow = InputSimulator.GetForegroundWindow();
-                if (activeWindow == IntPtr.Zero)
+                var idleThreshold = TimeSpan.FromSeconds(_configStore.Config.AwayIdleThresholdSeconds);
+                if (!IdleStateService.IsIdle(idleThreshold))
                 {
-                    _eventLog.Record("Input skipped: no active window");
-                }
-                else
-                {
-                    InputSimulator.SendKey((ushort)preInputKey);
-                    _eventLog.Record($"Input sent: {preInputKey}");
-                }
-
-                var delayMs = _configStore.Config.InputDelayMs;
-                if (delayMs > 0)
-                {
-                    await Task.Delay(delayMs, token);
+                    _stats.ScreenshotsSkippedActive++;
+                    _eventLog.Record("Capture skipped: user is active");
+                    return;
                 }
             }
-            else
+
+            await SendConfiguredInputsAsync(_configStore.Config.PreScreenshotKeys, "Pre-screenshot input", token);
+
+            var monitor = ResolveSelectedMonitor();
+            screenshotPath = _capture.CaptureToTempPng(monitor);
+            await SendConfiguredInputsAsync(_configStore.Config.PostScreenshotKeys, "Post-screenshot input", token);
+
+            if (!_changeDetector.HasMeaningfulChange(screenshotPath, _configStore.Config.ChangeDetectionSensitivity))
             {
-                _eventLog.Record("Input skipped: disabled");
+                _stats.ScreenshotsSkippedNoChange++;
+                _eventLog.Record("Upload skipped: no meaningful screenshot change detected");
+                ScreenshotCleanupService.TryDelete(screenshotPath);
+                screenshotPath = null;
+                return;
             }
 
-            string? screenshotPath = null;
-            try
-            {
-                var monitor = _monitorCatalog.GetSelectedOrDefault(_configStore.Config.SelectedMonitor);
-                screenshotPath = _capture.CaptureToTempPng(monitor);
-                await _uploader.UploadScreenshotAsync(
-                    _configStore.Config.WebhookUrl,
-                    screenshotPath,
-                    "📸 Screenshot",
-                    token);
-
-                _stats.ScreenshotsSent++;
-                _stats.LastUploadTime = DateTime.Now;
-
-                if (_stats.LastUploadFailed)
-                {
-                    _eventLog.Record("Upload recovered");
-                }
-
-                _stats.LastUploadFailed = false;
-                SetTrayState(_monitoring ? TrayState.On : TrayState.Off);
-            }
-            catch (OperationCanceledException)
-            {
-            }
-            catch (Exception ex)
-            {
-                _stats.UploadErrors++;
-                _stats.LastUploadFailed = true;
-                _eventLog.Record($"Upload failed: {ex.Message}");
-                SetTrayState(TrayState.Error);
-            }
-            finally
-            {
-                if (!string.IsNullOrWhiteSpace(screenshotPath) && File.Exists(screenshotPath))
-                {
-                    try
-                    {
-                        File.Delete(screenshotPath);
-                    }
-                    catch
-                    {
-                    }
-                }
-            }
+            await _uploader.UploadScreenshotAsync(_configStore.Config.WebhookUrl, screenshotPath, "Screenshot", token);
+            RecordUploadSuccess();
+        }
+        catch (OperationCanceledException)
+        {
+        }
+        catch (Exception ex)
+        {
+            RecordUploadFailure(ex);
         }
         finally
         {
+            _cleanup.Cleanup(_configStore.Config, screenshotPath);
             _uploadInProgress = false;
         }
     }
@@ -270,24 +278,15 @@ internal sealed class ScreenPeekrApplicationContext : ApplicationContext
         string? screenshotPath = null;
         try
         {
-            var monitor = _monitorCatalog.GetSelectedOrDefault(_configStore.Config.SelectedMonitor);
+            var monitor = ResolveSelectedMonitor();
             screenshotPath = _capture.CaptureToTempPng(monitor);
             await _uploader.UploadScreenshotAsync(
                 _configStore.Config.WebhookUrl,
                 screenshotPath,
-                manual ? "📸 Manual Screenshot" : "📸 Screenshot",
+                manual ? "Manual Screenshot" : "Screenshot",
                 cancellationToken);
 
-            _stats.ScreenshotsSent++;
-            _stats.LastUploadTime = DateTime.Now;
-
-            if (_stats.LastUploadFailed)
-            {
-                _eventLog.Record("Upload recovered");
-            }
-
-            _stats.LastUploadFailed = false;
-            SetTrayState(_monitoring ? TrayState.On : TrayState.Off);
+            RecordUploadSuccess();
 
             if (manual)
             {
@@ -299,24 +298,11 @@ internal sealed class ScreenPeekrApplicationContext : ApplicationContext
         }
         catch (Exception ex)
         {
-            _stats.UploadErrors++; 
-            _stats.LastUploadFailed = true;
-            _eventLog.Record($"Upload failed: {ex.Message}");
-            SetTrayState(TrayState.Error);
+            RecordUploadFailure(ex);
         }
         finally
         {
-            if (!string.IsNullOrWhiteSpace(screenshotPath) && File.Exists(screenshotPath))
-            {
-                try
-                {
-                    File.Delete(screenshotPath);
-                }
-                catch
-                {
-                }
-            }
-
+            _cleanup.Cleanup(_configStore.Config, screenshotPath);
             _uploadInProgress = false;
         }
     }
@@ -396,29 +382,43 @@ internal sealed class ScreenPeekrApplicationContext : ApplicationContext
         {
             _configStore.Config.SelectedMonitor = selected.Id;
             _configStore.Save();
+            _usingMonitorFallback = false;
             _eventLog.Record($"Monitor mode changed: {selected.DisplayName}");
         }
     }
 
     private void SetPreScreenshotInput()
     {
-        using var binder = new KeyBinderForm(_configStore.Config.PreScreenshotKey);
-        if (binder.ShowDialog() == DialogResult.OK)
+        var value = SimpleInput.Prompt("Set Pre-Screenshot Inputs", "Comma-separated keys, or blank for none:", FormatKeys(_configStore.Config.PreScreenshotKeys));
+        if (value is null)
         {
-            var oldKey = _configStore.Config.PreScreenshotKey;
-            var newKey = binder.SelectedKey;
-            if (oldKey != newKey)
-            {
-                _configStore.Config.PreScreenshotKey = newKey;
-                _configStore.Save();
-                _eventLog.Record($"Input binding changed: {newKey}");
-            }
+            return;
         }
+
+        var keys = ParseKeys(value);
+        _configStore.Config.PreScreenshotKeys = keys;
+        _configStore.Config.PreScreenshotKey = keys.FirstOrDefault(Keys.None);
+        _configStore.Save();
+        _eventLog.Record($"Pre-screenshot inputs changed: {FormatKeys(keys)}");
+    }
+
+    private void SetPostScreenshotInputs()
+    {
+        var value = SimpleInput.Prompt("Set Post-Screenshot Inputs", "Comma-separated keys, or blank for none:", FormatKeys(_configStore.Config.PostScreenshotKeys));
+        if (value is null)
+        {
+            return;
+        }
+
+        var keys = ParseKeys(value);
+        _configStore.Config.PostScreenshotKeys = keys;
+        _configStore.Save();
+        _eventLog.Record($"Post-screenshot inputs changed: {FormatKeys(keys)}");
     }
 
     private void SetInputDelay()
     {
-        var value = SimpleInput.Prompt("Set Input Delay", "Delay in milliseconds:", _configStore.Config.InputDelayMs.ToString());
+        var value = SimpleInput.Prompt("Set Input Delay", "Delay between input keys in milliseconds:", _configStore.Config.InputDelayMs.ToString());
         if (value is null)
         {
             return;
@@ -430,13 +430,99 @@ internal sealed class ScreenPeekrApplicationContext : ApplicationContext
             return;
         }
 
-        var oldDelay = _configStore.Config.InputDelayMs;
-        if (oldDelay != ms)
+        if (_configStore.Config.InputDelayMs != ms)
         {
             _configStore.Config.InputDelayMs = ms;
             _configStore.Save();
             _eventLog.Record($"Input delay changed: {ms} ms");
         }
+    }
+
+    private void SetKeyHoldDuration()
+    {
+        var value = SimpleInput.Prompt("Set Key Hold Duration", "Key hold duration in milliseconds:", _configStore.Config.KeyHoldDurationMs.ToString());
+        if (value is null)
+        {
+            return;
+        }
+
+        if (!int.TryParse(value, out var ms) || ms < 0)
+        {
+            MessageBox.Show("Enter a non-negative number of milliseconds.", "ScreenPeekr", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            return;
+        }
+
+        _configStore.Config.KeyHoldDurationMs = ms;
+        _configStore.Save();
+        _eventLog.Record($"Key hold duration changed: {ms} ms");
+    }
+
+    private void SetChangeSensitivity()
+    {
+        var value = SimpleInput.Prompt("Set Change Sensitivity", "0-100. Higher is stricter and uploads less often:", _configStore.Config.ChangeDetectionSensitivity.ToString());
+        if (value is null)
+        {
+            return;
+        }
+
+        if (!int.TryParse(value, out var sensitivity))
+        {
+            MessageBox.Show("Enter a whole number from 0 to 100.", "ScreenPeekr", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            return;
+        }
+
+        _configStore.Config.ChangeDetectionSensitivity = Math.Clamp(sensitivity, 0, 100);
+        _configStore.Save();
+        _eventLog.Record($"Change sensitivity changed: {_configStore.Config.ChangeDetectionSensitivity}");
+    }
+
+    private void ToggleAwayOnlyMode()
+    {
+        _configStore.Config.AwayOnlyMode = !_configStore.Config.AwayOnlyMode;
+        _configStore.Save();
+        _eventLog.Record($"Away-only mode {(_configStore.Config.AwayOnlyMode ? "enabled" : "disabled")}");
+    }
+
+    private void SetAwayIdleThreshold()
+    {
+        var value = SimpleInput.Prompt("Set Away Idle Threshold", "Idle seconds before capture is allowed:", _configStore.Config.AwayIdleThresholdSeconds.ToString());
+        if (value is null)
+        {
+            return;
+        }
+
+        if (!int.TryParse(value, out var seconds) || seconds < 1)
+        {
+            MessageBox.Show("Enter a positive whole number of seconds.", "ScreenPeekr", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            return;
+        }
+
+        _configStore.Config.AwayIdleThresholdSeconds = seconds;
+        _configStore.Save();
+        _eventLog.Record($"Away idle threshold changed: {seconds} seconds");
+    }
+
+    private void SetScreenshotRetention()
+    {
+        var current = $"{_configStore.Config.ScreenshotRetentionDays},{_configStore.Config.ScreenshotRetentionCount}";
+        var value = SimpleInput.Prompt("Set Screenshot Retention", "Days,count. Example: 1,50", current);
+        if (value is null)
+        {
+            return;
+        }
+
+        var parts = value.Split(',', StringSplitOptions.TrimEntries);
+        if (parts.Length != 2 || !int.TryParse(parts[0], out var days) || !int.TryParse(parts[1], out var count) || days < 0 || count < 0)
+        {
+            MessageBox.Show("Enter retention as two non-negative numbers: days,count", "ScreenPeekr", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            return;
+        }
+
+        _configStore.Config.ScreenshotRetentionDays = days;
+        _configStore.Config.ScreenshotRetentionCount = count;
+        _configStore.Save();
+        _cleanup.Cleanup(_configStore.Config);
+        _eventLog.Record($"Screenshot retention changed: {days} days, {count} files");
     }
 
     private void ToggleStartup()
@@ -448,9 +534,101 @@ internal sealed class ScreenPeekrApplicationContext : ApplicationContext
 
     private void ShowLog()
     {
-        var monitor = _monitorCatalog.GetSelectedOrDefault(_configStore.Config.SelectedMonitor);
+        var monitor = ResolveSelectedMonitor();
         var window = new LogWindow(_configStore.Config, _stats, GetStatusText(), monitor.DisplayName, _eventLog);
         window.Show();
+    }
+
+    private async Task SendConfiguredInputsAsync(IReadOnlyCollection<Keys> keys, string label, CancellationToken token)
+    {
+        if (keys.Count == 0)
+        {
+            return;
+        }
+
+        var activeWindow = InputSimulator.GetForegroundWindow();
+        if (activeWindow == IntPtr.Zero)
+        {
+            _eventLog.Record($"{label} skipped: no active window");
+            return;
+        }
+
+        await InputSimulator.SendKeysAsync(keys, _configStore.Config.InputDelayMs, _configStore.Config.KeyHoldDurationMs, token);
+        _eventLog.Record($"{label} sent: {FormatKeys(keys)}");
+    }
+
+    private MonitorInfo ResolveSelectedMonitor()
+    {
+        if (string.Equals(_configStore.Config.SelectedMonitor, "ALL", StringComparison.OrdinalIgnoreCase))
+        {
+            return _monitorCatalog.GetSelectedOrDefault(_configStore.Config.SelectedMonitor);
+        }
+
+        try
+        {
+            var monitors = _monitorCatalog.GetMonitors();
+            var selected = monitors.FirstOrDefault(m => string.Equals(m.Id, _configStore.Config.SelectedMonitor, StringComparison.OrdinalIgnoreCase));
+            if (selected is not null)
+            {
+                if (_usingMonitorFallback)
+                {
+                    _eventLog.Record($"Selected monitor reconnected: {selected.DisplayName}");
+                    _usingMonitorFallback = false;
+                }
+
+                return selected;
+            }
+        }
+        catch (Exception ex)
+        {
+            _eventLog.Record($"Monitor enumeration failed: {ex.Message}");
+        }
+
+        var primary = Screen.PrimaryScreen;
+        if (primary is null)
+        {
+            return _monitorCatalog.GetSelectedOrDefault(_configStore.Config.SelectedMonitor);
+        }
+
+        if (!_usingMonitorFallback)
+        {
+            _eventLog.Record("Selected monitor unavailable; using primary display until it returns");
+            _usingMonitorFallback = true;
+        }
+
+        return new MonitorInfo(primary.DeviceName, "Primary Display (fallback)", primary.Bounds);
+    }
+
+    private void RecordUploadSuccess()
+    {
+        _stats.ScreenshotsSent++;
+        _stats.LastUploadTime = DateTime.Now;
+
+        if (_stats.LastUploadFailed)
+        {
+            _eventLog.Record("Upload recovered");
+        }
+
+        _stats.LastUploadFailed = false;
+        _stats.WebhookHealthy = true;
+        _stats.ConsecutiveUploadFailures = 0;
+        SetTrayState(_monitoring ? TrayState.On : TrayState.Off);
+    }
+
+    private void RecordUploadFailure(Exception ex)
+    {
+        _stats.UploadErrors++;
+        _stats.LastUploadFailed = true;
+        _stats.ConsecutiveUploadFailures++;
+
+        if (_stats.ConsecutiveUploadFailures >= 3)
+        {
+            _stats.WebhookHealthy = false;
+            _eventLog.Record("Webhook marked unhealthy after repeated failures");
+        }
+
+        _eventLog.Record($"Upload failed: {ex.Message}");
+        SetTrayState(TrayState.Error);
     }
 
     private void TriggerIntervalChange()
@@ -477,6 +655,30 @@ internal sealed class ScreenPeekrApplicationContext : ApplicationContext
             TrayState.On => "ON",
             _ => "OFF"
         };
+    }
+
+    private static string FormatKeys(IEnumerable<Keys> keys)
+    {
+        var text = string.Join(",", keys.Where(key => key != Keys.None).Select(key => key.ToString()));
+        return string.IsNullOrWhiteSpace(text) ? string.Empty : text;
+    }
+
+    private static List<Keys> ParseKeys(string value)
+    {
+        var keys = new List<Keys>();
+        foreach (var part in value.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+        {
+            if (Enum.TryParse<Keys>(part, true, out var key) && key != Keys.None)
+            {
+                keys.Add(key);
+            }
+            else if (int.TryParse(part, out var numeric) && numeric != (int)Keys.None)
+            {
+                keys.Add((Keys)numeric);
+            }
+        }
+
+        return keys;
     }
 
     private void Exit()

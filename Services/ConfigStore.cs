@@ -24,6 +24,12 @@ internal sealed class ConfigStore : IDisposable
     public void Save()
     {
         Config.IntervalSeconds = Math.Max(MinimumIntervalSeconds, Config.IntervalSeconds);
+        Config.InputDelayMs = Math.Max(0, Config.InputDelayMs);
+        Config.KeyHoldDurationMs = Math.Max(0, Config.KeyHoldDurationMs);
+        Config.ChangeDetectionSensitivity = Math.Clamp(Config.ChangeDetectionSensitivity, 0, 100);
+        Config.AwayIdleThresholdSeconds = Math.Max(1, Config.AwayIdleThresholdSeconds);
+        Config.ScreenshotRetentionDays = Math.Max(0, Config.ScreenshotRetentionDays);
+        Config.ScreenshotRetentionCount = Math.Max(0, Config.ScreenshotRetentionCount);
         var lines = new[]
         {
             $"webhook_url={Config.WebhookUrl}",
@@ -31,7 +37,15 @@ internal sealed class ConfigStore : IDisposable
             $"selected_monitor={Config.SelectedMonitor}",
             $"start_with_windows={Config.StartWithWindows.ToString().ToLowerInvariant()}",
             $"pre_screenshot_key={Config.PreScreenshotKey}",
-            $"input_delay_ms={Config.InputDelayMs}"
+            $"pre_screenshot_keys={FormatKeys(Config.PreScreenshotKeys)}",
+            $"post_screenshot_keys={FormatKeys(Config.PostScreenshotKeys)}",
+            $"input_delay_ms={Config.InputDelayMs}",
+            $"key_hold_duration_ms={Config.KeyHoldDurationMs}",
+            $"change_detection_sensitivity={Config.ChangeDetectionSensitivity}",
+            $"away_only_mode={Config.AwayOnlyMode.ToString().ToLowerInvariant()}",
+            $"away_idle_threshold_seconds={Config.AwayIdleThresholdSeconds}",
+            $"screenshot_retention_days={Config.ScreenshotRetentionDays}",
+            $"screenshot_retention_count={Config.ScreenshotRetentionCount}"
         };
         File.WriteAllLines(_configPath, lines);
     }
@@ -87,13 +101,61 @@ internal sealed class ConfigStore : IDisposable
                         config.PreScreenshotKey = (Keys)keyVal;
                     }
                     break;
+                case "pre_screenshot_keys":
+                    config.PreScreenshotKeys = ParseKeys(value);
+                    break;
+                case "post_screenshot_keys":
+                    config.PostScreenshotKeys = ParseKeys(value);
+                    break;
                 case "input_delay_ms":
                     if (int.TryParse(value, out var delay))
                     {
                         config.InputDelayMs = Math.Max(0, delay);
                     }
                     break;
+                case "key_hold_duration_ms":
+                    if (int.TryParse(value, out var hold))
+                    {
+                        config.KeyHoldDurationMs = Math.Max(0, hold);
+                    }
+                    break;
+                case "change_detection_sensitivity":
+                    if (int.TryParse(value, out var sensitivity))
+                    {
+                        config.ChangeDetectionSensitivity = Math.Clamp(sensitivity, 0, 100);
+                    }
+                    break;
+                case "away_only_mode":
+                    config.AwayOnlyMode = bool.TryParse(value, out var awayOnly) && awayOnly;
+                    break;
+                case "away_idle_threshold_seconds":
+                    if (int.TryParse(value, out var idleSeconds))
+                    {
+                        config.AwayIdleThresholdSeconds = Math.Max(1, idleSeconds);
+                    }
+                    break;
+                case "screenshot_retention_days":
+                    if (int.TryParse(value, out var retentionDays))
+                    {
+                        config.ScreenshotRetentionDays = Math.Max(0, retentionDays);
+                    }
+                    break;
+                case "screenshot_retention_count":
+                    if (int.TryParse(value, out var retentionCount))
+                    {
+                        config.ScreenshotRetentionCount = Math.Max(0, retentionCount);
+                    }
+                    break;
             }
+        }
+
+        if (config.PreScreenshotKeys.Count == 0 && config.PreScreenshotKey != Keys.None)
+        {
+            config.PreScreenshotKeys.Add(config.PreScreenshotKey);
+        }
+        else if (config.PreScreenshotKeys.Count > 0)
+        {
+            config.PreScreenshotKey = config.PreScreenshotKeys[0];
         }
 
         return config;
@@ -106,4 +168,27 @@ internal sealed class ConfigStore : IDisposable
     }
 
     public void Dispose() => Save();
+
+    private static string FormatKeys(IEnumerable<Keys> keys)
+    {
+        return string.Join(",", keys.Where(key => key != Keys.None).Select(key => key.ToString()));
+    }
+
+    private static List<Keys> ParseKeys(string value)
+    {
+        var keys = new List<Keys>();
+        foreach (var part in value.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+        {
+            if (Enum.TryParse<Keys>(part, out var parsed) && parsed != Keys.None)
+            {
+                keys.Add(parsed);
+            }
+            else if (int.TryParse(part, out var numeric) && numeric != (int)Keys.None)
+            {
+                keys.Add((Keys)numeric);
+            }
+        }
+
+        return keys;
+    }
 }
