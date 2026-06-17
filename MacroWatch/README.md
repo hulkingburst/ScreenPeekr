@@ -1,101 +1,95 @@
-# MacroWatch
+# ScreenPeekr
 
-MacroWatch is a minimal Windows system tray utility for unattended game or Roblox monitoring. It periodically captures one selected monitor at native resolution and uploads a PNG screenshot to a Discord webhook.
+ScreenPeekr is a lightweight Windows system tray application for periodic screen capture and remote monitoring via Discord webhooks. It is designed to provide simple, low-overhead visibility of your screen while away from your machine.
 
-There is no dashboard, account system, OCR, AI, video recording, multi-monitor capture, quality setting, resolution setting, scheduler, pause timer, or Discord error notification path.
+The application runs silently in the system tray and operates entirely through a right-click menu—no main window or dashboard is required.
 
-## Tray Menu
+---
 
-```text
-MacroWatch
-─────────────────
-Status: OFF/ON/ERROR
+## Features
 
-Toggle ON/OFF
-Set Webhook...
-Set Interval...
-Select Monitor...
+- System tray-only application (no main window)
+- Periodic screenshot capture at a configurable interval
+- Discord webhook integration for remote viewing
+- Multi-monitor support (single monitor or all monitors)
+- Optional pre-capture keyboard input with configurable delay
+- PNG screenshot output (native resolution capture)
+- Lightweight background execution
+- Persistent configuration storage
 
-Take Screenshot Now
+---
 
-Show Log
+## System Tray Controls
 
-Start With Windows ✓
+Right-click the tray icon to access:
 
-Exit
-```
+- Toggle monitoring ON/OFF
+- Set Discord webhook URL
+- Set capture interval (minimum 5 seconds)
+- Select monitor (or all monitors)
+- Set pre-capture input key
+- Set input delay
+- Take screenshot manually
+- View local logs
+- Enable/disable start with Windows
+- Exit application
 
-## Behavior
+---
 
-- The app has no main window and starts in the system tray.
-- It always starts OFF, including when launched by Windows startup.
-- Gray icon means OFF, green means ON, and red means ERROR.
-- When turned ON, it sends one screenshot immediately, then continues on the configured interval.
-- When turned OFF, it stops immediately.
-- The interval is stored in whole seconds with a minimum of 15 seconds.
-- Manual screenshots can be sent while monitoring is OFF or ON.
-- Temporary PNG files are deleted after upload.
-- Upload failures are logged locally, increment the error counter, switch the tray icon red, and do not stop monitoring.
-- When a later upload succeeds after a failure, the tray icon returns to green while ON and the recovery is logged.
+## How It Works
 
-## Local Files
+When enabled, ScreenPeekr runs a capture loop:
 
-MacroWatch stores human-readable settings and logs in:
+1. Wait for the configured interval
+2. Optionally send a configured keypress
+3. Wait for the configured input delay
+4. Capture screenshot (selected monitor or full desktop)
+5. Upload image to Discord webhook
+6. Repeat
 
-```text
-%LOCALAPPDATA%\MacroWatch\
-```
+If disabled, the application remains idle in the system tray.
 
-Configuration file:
+---
 
-```text
-webhook_url=
-interval_seconds=60
-selected_monitor=\\.\DISPLAY1
-start_with_windows=false
-```
+## Configuration
 
-## Build From Source
+All settings are stored locally and persist between sessions:
 
-Requirements:
+- Webhook URL
+- Capture interval (seconds)
+- Selected monitor mode
+- Pre-capture input key
+- Input delay (ms)
+- Start with Windows setting
 
-- Windows 10 or newer
-- .NET 8 SDK with Windows Desktop support
+No external accounts or cloud services are required.
 
-Build a normal debug run:
+---
 
-```powershell
-dotnet run --project .\MacroWatch.csproj
-```
+## Logging
 
-Build a release executable:
+ScreenPeekr includes a lightweight local logging system.
 
-```powershell
-dotnet publish .\MacroWatch.csproj -c Release -r win-x64 --self-contained false -p:PublishSingleFile=true -p:PublishReadyToRun=true
-```
+- Successful screenshots are tracked via counters (not individual log spam)
+- Important events are logged, including:
+  - Application start/stop
+  - Monitoring enabled/disabled
+  - Webhook changes
+  - Interval changes
+  - Monitor selection changes
+  - Upload failures and recovery events
 
-The published executable will be in:
+---
 
-```text
-bin\Release\net8.0-windows\win-x64\publish\MacroWatch.exe
-```
+## Requirements
 
-Build a self-contained executable that does not require the .NET runtime to be installed:
+- Windows 10/11
+- Internet connection (for Discord webhook uploads)
 
-```powershell
-dotnet publish .\MacroWatch.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:PublishReadyToRun=true
-```
-
-## Discord Webhook Setup
-
-1. In Discord, open the target server channel settings.
-2. Choose Integrations, then Webhooks.
-3. Create or copy a webhook URL.
-4. In MacroWatch, right-click the tray icon and choose `Set Webhook...`.
-5. Use `Take Screenshot Now` to verify the webhook.
+---
 
 ## Notes
 
-- Start With Windows writes to the current user's `HKCU\Software\Microsoft\Windows\CurrentVersion\Run` registry key.
-- Monitor selection is persisted between launches.
-- MacroWatch prefers Windows monitor friendly names when available and falls back to `Display 1`, `Display 2`, and so on.
+ScreenPeekr is designed for personal monitoring and remote visibility use cases. It prioritizes simplicity, stability, and low resource usage over feature complexity.
+
+It is intentionally tray-based and does not include a traditional graphical interface.
