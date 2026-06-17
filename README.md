@@ -1,101 +1,98 @@
 # ScreenPeekr
 
-ScreenPeekr is a minimal Windows system tray utility for unattended game or Roblox monitoring. It periodically captures one selected monitor at native resolution and uploads a PNG screenshot to a Discord webhook.
+ScreenPeekr is a lightweight Windows system tray application for periodic screen capture and remote monitoring via Discord webhooks.
 
-There is no dashboard, account system, OCR, AI, video recording, quality setting, resolution setting, scheduler, pause timer, or Discord error notification path.
+It is designed for simple, unattended screen visibility while away from your computer, with a focus on reliability, minimal resource usage, and a tray-first workflow.
 
-## Tray Menu
+---
 
-```text
-ScreenPeekr
-─────────────────
-Status: OFF/ON/ERROR
+## Features
 
-Toggle ON/OFF
-Set Webhook...
-Set Interval...
-Select Monitor...
+- System tray-only application (no main window)
+- Periodic screenshot capture at configurable intervals
+- Discord webhook integration for image delivery
+- Multi-monitor support (single monitor or full desktop / all monitors mode)
+- Pre-capture keyboard input support (optional)
+- Configurable input delay before capture
+- Native resolution PNG screenshots
+- Persistent local configuration
+- Lightweight background operation
 
-Take Screenshot Now
+---
 
-Show Log
+## System Tray Controls
 
-Start With Windows ✓
+All interaction is handled via right-click tray menu:
 
-Exit
-```
+- Toggle monitoring ON/OFF
+- Set Discord webhook URL
+- Set capture interval (minimum 5 seconds)
+- Select monitor or all monitors mode
+- Set pre-capture input key
+- Set input delay (ms)
+- Take manual screenshot
+- View logs
+- Enable/disable start with Windows
+- Exit application
 
-## Behavior
+---
 
-- The app has no main window and starts in the system tray.
-- It always starts OFF, including when launched by Windows startup.
-- Gray icon means OFF, green means ON, and red means ERROR.
-- When turned ON, it sends one screenshot immediately, then continues on the configured interval.
-- When turned OFF, it stops immediately.
-- The interval is stored in whole seconds with a minimum of 5 seconds.
-- Manual screenshots can be sent while monitoring is OFF or ON.
-- Temporary PNG files are deleted after upload.
-- Upload failures are logged locally, increment the error counter, switch the tray icon red, and do not stop monitoring.
-- When a later upload succeeds after a failure, the tray icon returns to green while ON and the recovery is logged.
+## How It Works
 
-## Local Files
+When monitoring is enabled, ScreenPeekr runs a continuous capture loop:
 
-ScreenPeekr stores human-readable settings and logs in:
+1. Wait for configured interval
+2. Optionally send a configured keypress
+3. Wait for configured input delay
+4. Capture screenshot (selected monitor or full desktop)
+5. Upload PNG image to Discord webhook
+6. Repeat
 
-```text
-%LOCALAPPDATA%\ScreenPeekr\
-```
+When disabled, the application remains idle in the system tray.
 
-Configuration file:
+---
 
-```text
-webhook_url=
-interval_seconds=60
-selected_monitor=\\.\DISPLAY1
-start_with_windows=false
-```
+## Configuration
 
-## Build From Source
+All settings are stored locally and persist between sessions:
 
-Requirements:
+- Webhook URL
+- Capture interval (seconds)
+- Monitor selection mode
+- Pre-capture input key
+- Input delay (milliseconds)
+- Start with Windows option
 
-- Windows 10 or newer
-- .NET 8 SDK with Windows Desktop workload
+No accounts, cloud services, or external dependencies are required beyond Discord webhooks.
 
-Build a normal debug run:
+---
 
-```powershell
-dotnet run --project .\ScreenPeekr.csproj
-```
+## Logging
 
-### Build release (framework-dependent)
+ScreenPeekr maintains a lightweight local log system focused on meaningful events:
 
-```powershell
-dotnet publish .\ScreenPeekr.csproj -c Release -r win-x64 --self-contained false -p:PublishSingleFile=true -p:PublishReadyToRun=true
-```
+Tracked events include:
+- Application start and shutdown
+- Monitoring enabled/disabled
+- Webhook updates
+- Interval changes
+- Monitor selection changes
+- Input configuration changes
+- Upload failures and recovery events
 
-The published executable will be in:
+To avoid clutter, individual screenshot events are tracked using counters rather than per-event log entries.
 
-```text
-bin\Release\net8.0-windows\win-x64\publish\ScreenPeekr.exe
-```
+---
 
-Build a self-contained executable that does not require the .NET runtime to be installed:
+## Requirements
 
-```powershell
-dotnet publish .\ScreenPeekr.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:PublishReadyToRun=true
-```
+- Windows 10 / Windows 11
+- Active internet connection (for Discord webhook uploads)
 
-## Discord Webhook Setup
-
-1. In Discord, open the target server channel settings.
-2. Choose Integrations, then Webhooks.
-3. Create or copy a webhook URL.
-4. In ScreenPeekr, right-click the tray icon and choose `Set Webhook...`.
-5. Use `Take Screenshot Now` to verify the webhook.
+---
 
 ## Notes
 
-- Start With Windows writes to the current user's `HKCU\Software\Microsoft\Windows\CurrentVersion\Run` registry key.
-- Monitor selection is persisted between launches.
-- ScreenPeekr prefers Windows monitor friendly names when available and falls back to `Display 1`, `Display 2`, and so on.
+ScreenPeekr is intentionally minimal and tray-based. It is designed to run quietly in the background without requiring user interaction beyond initial configuration.
+
+The focus of the application is stability, simplicity, and long-duration unattended operation rather than feature complexity.
