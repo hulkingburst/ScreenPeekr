@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>ScreenPeekr</title>
+
+<style>
+    body {
+        margin: 0;
+        font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial;
+        background: #0b0f17;
+        color: #e7eefc;
+        display: flex;
+        justify-content: center;
+        min-height: 100vh;
+    }
+
+    .container {
+        max-width: 820px;
+        padding: 60px 24px;
+        width: 100%;
+        text-align: center;
+    }
+
+    .logo {
+        font-size: 44px;
+        font-weight: 700;
+        letter-spacing: -1px;
+    }
+
+    .tagline {
+        margin-top: 10px;
+        color: #9bb0d1;
+        font-size: 15px;
+        line-height: 1.6;
+    }
+
+    .card {
+        margin-top: 28px;
+        background: rgba(255,255,255,0.04);
+        border: 1px solid rgba(255,255,255,0.08);
+        border-radius: 14px;
+        padding: 20px;
+        text-align: left;
+    }
+
+    .version {
+        font-size: 13px;
+        color: #7f93b5;
+        margin-bottom: 10px;
+    }
+
+    .btn {
+        display: inline-block;
+        margin-top: 16px;
+        padding: 14px 18px;
+        border-radius: 10px;
+        background: #3b82f6;
+        color: white;
+        text-decoration: none;
+        font-weight: 600;
+        transition: 0.2s;
+    }
+
+    .btn:hover {
+        background: #2563eb;
+    }
+
+    .secondary {
+        margin-top: 10px;
+        font-size: 13px;
+        color: #8aa0c6;
+        line-height: 1.5;
+    }
+
+    /* Markdown styling */
+    #readmeContent {
+        font-size: 14px;
+        line-height: 1.6;
+        color: #d6e2ff;
+    }
+
+    #readmeContent h1,
+    #readmeContent h2,
+    #readmeContent h3 {
+        color: #ffffff;
+        margin-top: 18px;
+    }
+
+    #readmeContent code {
+        background: rgba(255,255,255,0.08);
+        padding: 2px 6px;
+        border-radius: 6px;
+    }
+
+    #readmeContent pre {
+        background: rgba(255,255,255,0.06);
+        padding: 12px;
+        border-radius: 10px;
+        overflow-x: auto;
+    }
+
+    a {
+        color: #60a5fa;
+    }
+</style>
+</head>
+
+<body>
+<div class="container">
+
+    <div class="logo">ScreenPeekr</div>
+
+    <div class="tagline">
+        Minimal Windows tray screen monitoring tool.<br/>
+        Captures screenshots at intervals and sends them to Discord webhooks.
+    </div>
+
+    <div class="card">
+        <div class="version" id="version">Loading latest version...</div>
+
+        <a id="downloadBtn" class="btn" href="#">
+            Download Latest .exe
+        </a>
+
+        <div class="secondary">
+            No installer • Single executable • Windows 10/11
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="version">README</div>
+        <div id="readmeContent">Loading README...</div>
+    </div>
+
+</div>
+
+<!-- Markdown parser -->
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+
+<script>
+const repo = "hulkingburst/ScreenPeekr";
+
+async function loadRelease() {
+    try {
+        const res = await fetch(`https://api.github.com/repos/${repo}/releases/latest`);
+        const data = await res.json();
+
+        document.getElementById("version").innerText =
+            "Latest version: " + (data.tag_name || "unknown");
+
+        const exe = data.assets?.find(a => a.name.endsWith(".exe"));
+
+        const url = exe
+            ? exe.browser_download_url
+            : `https://github.com/${repo}/releases/latest/download/ScreenPeekr.exe`;
+
+        document.getElementById("downloadBtn").href = url;
+
+    } catch (e) {
+        document.getElementById("version").innerText =
+            "Failed to load latest release";
+    }
+}
+
+async function loadReadme() {
+    try {
+        const res = await fetch(`https://raw.githubusercontent.com/${repo}/main/README.md`);
+
+        if (!res.ok) throw new Error("Failed");
+
+        const md = await res.text();
+        document.getElementById("readmeContent").innerHTML = marked.parse(md);
+
+    } catch (e) {
+        document.getElementById("readmeContent").innerHTML =
+            "README could not be loaded.";
+    }
+}
+
+loadRelease();
+loadReadme();
+</script>
+
+</body>
+</html>
