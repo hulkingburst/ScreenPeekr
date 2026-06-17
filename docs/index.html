@@ -1,307 +1,184 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>ScreenPeekr</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>ScreenPeekr - Download Latest</title>
 
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 
-<style>
-:root {
-    --bg: #0b0f17;
-    --card: rgba(255,255,255,0.04);
-    --border: rgba(255,255,255,0.08);
-    --text: #e7eefc;
-    --muted: #9bb0d1;
-    --accent: #3b82f6;
-    --accent2: #2563eb;
-}
+  <style>
+    :root {
+      --bg: #0f1115;
+      --card: #161a22;
+      --text: #e6e6e6;
+      --muted: #9aa4b2;
+      --accent: #4f7cff;
+      --border: #2a2f3a;
+    }
 
-* {
-    box-sizing: border-box;
-}
+    body {
+      margin: 0;
+      font-family: system-ui, Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+    }
 
-html {
-    width: 100%;
-    height: 100%;
-    
-    /* ✅ FIX: prevents horizontal shift from scrollbar */
-    scrollbar-gutter: stable;
-}
+    .container {
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 32px 16px;
+    }
 
-body {
-    margin: 0;
-    font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, Arial;
+    .top {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 24px;
+      text-align: center;
+    }
 
-    background: radial-gradient(1000px 600px at 50% -10%, rgba(59,130,246,0.25), transparent),
-                var(--bg);
+    .download-btn {
+      display: inline-block;
+      padding: 16px 28px;
+      font-size: 18px;
+      font-weight: 600;
+      background: var(--accent);
+      color: white;
+      border-radius: 10px;
+      text-decoration: none;
+      transition: 0.2s;
+    }
 
-    color: var(--text);
+    .download-btn:hover {
+      opacity: 0.9;
+      transform: translateY(-1px);
+    }
 
-    min-height: 100vh;
+    .download-btn.disabled {
+      background: #555;
+      pointer-events: none;
+      opacity: 0.6;
+    }
 
-    /* ✅ FIX: prevents layout shift due to scrollbar appearing/disappearing */
-    overflow-y: scroll;
-}
+    .meta {
+      margin-top: 12px;
+      color: var(--muted);
+      font-size: 14px;
+    }
 
-/* CENTER WRAPPER */
-.container {
-    width: 100%;
-    max-width: 920px;
+    .readme {
+      margin-top: 24px;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 24px;
+    }
 
-    margin: 0 auto;
-    padding: 70px 24px;
+    .readme h1, .readme h2, .readme h3 {
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 6px;
+    }
 
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-}
+    .loading {
+      color: var(--muted);
+      text-align: center;
+      padding: 20px;
+    }
 
-/* HERO */
-.hero {
-    text-align: center;
-    margin-bottom: 40px;
-    width: 100%;
-}
-
-.logo {
-    font-size: 52px;
-    font-weight: 700;
-    letter-spacing: -1.5px;
-}
-
-.tagline {
-    margin-top: 12px;
-    color: var(--muted);
-    font-size: 16px;
-    line-height: 1.6;
-    max-width: 620px;
-    margin-left: auto;
-    margin-right: auto;
-}
-
-/* GRID */
-.grid {
-    width: 100%;
-    display: grid;
-    grid-template-columns: 1fr;
-    gap: 18px;
-}
-
-/* CARD */
-.card {
-    width: 100%;
-    background: var(--card);
-    border: 1px solid var(--border);
-    border-radius: 16px;
-    padding: 20px;
-    backdrop-filter: blur(10px);
-}
-
-.card h3 {
-    margin: 0 0 10px 0;
-    font-size: 14px;
-    color: var(--muted);
-    font-weight: 500;
-}
-
-/* BUTTON */
-.btn {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-
-    margin-top: 10px;
-
-    padding: 14px 18px;
-    border-radius: 12px;
-
-    background: var(--accent);
-    color: white;
-
-    text-decoration: none;
-    font-weight: 600;
-
-    transition: 0.2s;
-}
-
-.btn:hover {
-    background: var(--accent2);
-    transform: translateY(-1px);
-}
-
-/* BIG CTA */
-.cta-wrapper {
-    display: flex;
-    justify-content: center;
-    width: 100%;
-    margin-top: 14px;
-}
-
-.cta {
-    padding: 18px 32px;
-    font-size: 16px;
-    border-radius: 14px;
-    min-width: 260px;
-    text-align: center;
-    box-shadow: 0 10px 30px rgba(59,130,246,0.25);
-}
-
-.cta:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 14px 40px rgba(59,130,246,0.35);
-}
-
-/* META */
-.meta {
-    font-size: 13px;
-    color: var(--muted);
-    margin-top: 10px;
-    line-height: 1.5;
-    text-align: center;
-}
-
-/* README */
-#readmeContent {
-    font-size: 14px;
-    line-height: 1.65;
-    color: #d6e2ff;
-}
-
-#readmeContent h1,
-#readmeContent h2,
-#readmeContent h3 {
-    color: white;
-    margin-top: 20px;
-}
-
-#readmeContent code {
-    background: rgba(255,255,255,0.08);
-    padding: 2px 6px;
-    border-radius: 6px;
-}
-
-#readmeContent pre {
-    background: rgba(255,255,255,0.06);
-    padding: 12px;
-    border-radius: 12px;
-    overflow-x: auto;
-}
-
-/* LOADING */
-.loading {
-    opacity: 0.6;
-    animation: pulse 1.5s infinite;
-}
-
-@keyframes pulse {
-    0% { opacity: 0.4; }
-    50% { opacity: 0.7; }
-    100% { opacity: 0.4; }
-}
-</style>
+    code {
+      background: #0b0d12;
+      padding: 2px 6px;
+      border-radius: 6px;
+    }
+  </style>
 </head>
 
 <body>
+  <div class="container">
 
-<div class="container">
-
-    <!-- HERO -->
-    <div class="hero">
-        <div class="logo">ScreenPeekr</div>
-        <div class="tagline">
-            Lightweight Windows tray utility that captures your screen at intervals
-            and sends it directly to a Discord webhook.
-        </div>
+    <div class="top">
+      <a id="downloadBtn" class="download-btn" href="#">Download Latest</a>
+      <div class="meta" id="releaseInfo">Loading latest release...</div>
     </div>
 
-    <div class="grid">
-
-        <!-- DOWNLOAD -->
-        <div class="card">
-            <h3>Latest Release</h3>
-
-            <div id="version" class="meta loading">Loading latest version…</div>
-
-            <div class="cta-wrapper">
-                <a id="downloadBtn" class="btn cta" href="#">
-                    Download Latest .exe
-                </a>
-            </div>
-
-            <div class="meta">
-                Single executable • No installer • Windows 10/11
-            </div>
-        </div>
-
-        <!-- FEATURES -->
-        <div class="card">
-            <h3>What it does</h3>
-            <div class="meta" style="text-align:left;">
-                • Runs silently in system tray<br>
-                • Captures selected monitor at interval<br>
-                • Sends PNG screenshots to Discord webhook<br>
-                • Lightweight (.NET 8, single EXE)<br>
-                • No UI, no background bloat
-            </div>
-        </div>
-
-        <!-- README -->
-        <div class="card">
-            <h3>Documentation</h3>
-            <div id="readmeContent" class="loading">Loading README…</div>
-        </div>
-
+    <div class="readme" id="readme">
+      <div class="loading">Loading README...</div>
     </div>
-</div>
 
-<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  </div>
 
 <script>
-const repo = "hulkingburst/ScreenPeekr";
+const OWNER = "hulkingburst";
+const REPO  = "ScreenPeekr";
 
-async function loadRelease() {
-    try {
-        const res = await fetch(`https://api.github.com/repos/${repo}/releases/latest`);
-        const data = await res.json();
+const releaseAPI = `https://api.github.com/repos/${OWNER}/${REPO}/releases/latest`;
 
-        document.getElementById("version").classList.remove("loading");
-        document.getElementById("version").innerText =
-            "Version " + (data.tag_name || "unknown");
-
-        const exe = data.assets?.find(a => a.name.endsWith(".exe"));
-
-        const url = exe
-            ? exe.browser_download_url
-            : `https://github.com/${repo}/releases/latest/download/ScreenPeekr.exe`;
-
-        document.getElementById("downloadBtn").href = url;
-
-    } catch (e) {
-        document.getElementById("version").innerText =
-            "Unable to load release";
-    }
+async function fetchLatestRelease() {
+  const res = await fetch(releaseAPI);
+  if (!res.ok) throw new Error("Failed to fetch release");
+  return await res.json();
 }
 
-async function loadReadme() {
-    try {
-        const res = await fetch(`https://raw.githubusercontent.com/${repo}/main/README.md`);
-        const md = await res.text();
-
-        document.getElementById("readmeContent").classList.remove("loading");
-        document.getElementById("readmeContent").innerHTML = marked.parse(md);
-
-    } catch (e) {
-        document.getElementById("readmeContent").innerHTML =
-            "README unavailable.";
-    }
+function findExeAsset(release) {
+  if (!release.assets) return null;
+  return release.assets.find(a => a.name.endsWith(".exe")) || null;
 }
 
-loadRelease();
-loadReadme();
+function setDownloadButton(asset, release) {
+  const btn = document.getElementById("downloadBtn");
+  const info = document.getElementById("releaseInfo");
+
+  if (asset) {
+    btn.href = asset.browser_download_url;
+    btn.classList.remove("disabled");
+    info.textContent = `Latest: ${release.tag_name}`;
+  } else {
+    btn.classList.add("disabled");
+    btn.href = "#";
+    info.textContent = `Latest: ${release.tag_name} (No .exe found)`;
+  }
+}
+
+async function fetchReadme() {
+  const branches = ["main", "master"];
+
+  for (const b of branches) {
+    const url = `https://raw.githubusercontent.com/${OWNER}/${REPO}/${b}/README.md`;
+    const res = await fetch(url);
+    if (res.ok) return await res.text();
+  }
+
+  throw new Error("README not found");
+}
+
+function renderReadme(md) {
+  document.getElementById("readme").innerHTML = marked.parse(md);
+}
+
+async function init() {
+  try {
+    const release = await fetchLatestRelease();
+    const asset = findExeAsset(release);
+    setDownloadButton(asset, release);
+  } catch (e) {
+    document.getElementById("releaseInfo").textContent =
+      "Failed to load latest release";
+    console.error(e);
+  }
+
+  try {
+    const readme = await fetchReadme();
+    renderReadme(readme);
+  } catch (e) {
+    document.getElementById("readme").innerHTML =
+      "<div class='loading'>Failed to load README</div>";
+    console.error(e);
+  }
+}
+
+init();
+setInterval(init, 5 * 60 * 1000);
 </script>
 
 </body>
