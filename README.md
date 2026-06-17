@@ -60,7 +60,7 @@ start_with_windows=false
 Requirements:
 
 - Windows 10 or newer
-- .NET 8 SDK with Windows Desktop support
+- .NET 8 SDK with Windows Desktop workload
 
 Build a normal debug run:
 
@@ -68,7 +68,7 @@ Build a normal debug run:
 dotnet run --project .\ScreenPeekr.csproj
 ```
 
-Build a release executable:
+### Build release (framework-dependent)
 
 ```powershell
 dotnet publish .\ScreenPeekr.csproj -c Release -r win-x64 --self-contained false -p:PublishSingleFile=true -p:PublishReadyToRun=true
