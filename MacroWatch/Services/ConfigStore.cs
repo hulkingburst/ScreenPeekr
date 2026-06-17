@@ -1,10 +1,11 @@
+using System.Windows.Forms;
 using MacroWatch.Models;
 
 namespace MacroWatch.Services;
 
 internal sealed class ConfigStore : IDisposable
 {
-    private const int MinimumIntervalSeconds = 15;
+    private const int MinimumIntervalSeconds = 5;
     private readonly string _configPath;
 
     public ConfigStore()
@@ -28,7 +29,9 @@ internal sealed class ConfigStore : IDisposable
             $"webhook_url={Config.WebhookUrl}",
             $"interval_seconds={Config.IntervalSeconds}",
             $"selected_monitor={Config.SelectedMonitor}",
-            $"start_with_windows={Config.StartWithWindows.ToString().ToLowerInvariant()}"
+            $"start_with_windows={Config.StartWithWindows.ToString().ToLowerInvariant()}",
+            $"pre_screenshot_key={Config.PreScreenshotKey}",
+            $"input_delay_ms={Config.InputDelayMs}"
         };
         File.WriteAllLines(_configPath, lines);
     }
@@ -73,6 +76,22 @@ internal sealed class ConfigStore : IDisposable
                     break;
                 case "start_with_windows":
                     config.StartWithWindows = bool.TryParse(value, out var enabled) && enabled;
+                    break;
+                case "pre_screenshot_key":
+                    if (Enum.TryParse<Keys>(value, out var parsedKey))
+                    {
+                        config.PreScreenshotKey = parsedKey;
+                    }
+                    else if (int.TryParse(value, out var keyVal))
+                    {
+                        config.PreScreenshotKey = (Keys)keyVal;
+                    }
+                    break;
+                case "input_delay_ms":
+                    if (int.TryParse(value, out var delay))
+                    {
+                        config.InputDelayMs = Math.Max(0, delay);
+                    }
                     break;
             }
         }

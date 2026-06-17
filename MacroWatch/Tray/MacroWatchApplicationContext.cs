@@ -13,8 +13,10 @@ internal sealed class MacroWatchApplicationContext : ApplicationContext
     private readonly DiscordWebhookClient _uploader;
     private readonly RuntimeStats _stats = new();
     private readonly NotifyIcon _notifyIcon;
-    private readonly System.Windows.Forms.Timer _timer = new();
+    
+    private Task? _monitoringTask;
     private CancellationTokenSource? _monitoringCancellation;
+    private CancellationTokenSource _intervalChangeCts = new();
     private bool _monitoring;
     private bool _uploadInProgress;
     private TrayState _trayState = TrayState.Off;
@@ -39,8 +41,6 @@ internal sealed class MacroWatchApplicationContext : ApplicationContext
             _configStore.Config.SelectedMonitor = _monitorCatalog.GetSelectedOrDefault(string.Empty).Id;
             _configStore.Save();
         }
-
-        _timer.Tick += async (_, _) => await SendScreenshotAsync(manual: false, _monitoringCancellation?.Token ?? CancellationToken.None);
 
         _notifyIcon = new NotifyIcon
         {
@@ -70,6 +70,8 @@ internal sealed class MacroWatchApplicationContext : ApplicationContext
         menu.Items.Add(new ToolStripMenuItem("Set Webhook...", null, (_, _) => SetWebhook()));
         menu.Items.Add(new ToolStripMenuItem("Set Interval...", null, (_, _) => SetInterval()));
         menu.Items.Add(new ToolStripMenuItem("Select Monitor...", null, (_, _) => SelectMonitor()));
+        menu.Items.Add(new ToolStripMenuItem("Set Pre-Screenshot Input...", null, (_, _) => SetPreScreenshotInput()));
+        menu.Items.Add(new ToolStripMenuItem("Set Input Delay...", null, (_, _) => SetInputDelay()));
         menu.Items.Add(new ToolStripSeparator());
         menu.Items.Add(new ToolStripMenuItem("Take Screenshot Now", null, async (_, _) => await SendScreenshotAsync(manual: true)));
         menu.Items.Add(new ToolStripSeparator());
@@ -87,7 +89,7 @@ internal sealed class MacroWatchApplicationContext : ApplicationContext
     {
         if (_monitoring)
         {
-            DisableMonitoring();
+            await DisableMonitoringAsync();
             return;
         }
 
@@ -95,21 +97,152 @@ internal sealed class MacroWatchApplicationContext : ApplicationContext
         _monitoringCancellation?.Dispose();
         _monitoringCancellation = new CancellationTokenSource();
         _eventLog.Record("Monitoring enabled");
-        ApplyTimerInterval();
-        _timer.Start();
         SetTrayState(TrayState.On);
-        await SendScreenshotAsync(manual: false, _monitoringCancellation.Token);
+
+        var token = _monitoringCancellation.Token;
+        _monitoringTask = Task.Run(() => RunMonitoringLoopAsync(token), token);
     }
 
-    private void DisableMonitoring()
+    private async Task DisableMonitoringAsync()
     {
-        _timer.Stop();
+        if (!_monitoring) return;
+
+        _monitoring = false;
         _monitoringCancellation?.Cancel();
+
+        if (_monitoringTask != null)
+        {
+            try
+            {
+                await _monitoringTask;
+            }
+            catch
+            {
+                // Ignore task cancellation exceptions
+            }
+            _monitoringTask = null;
+        }
+
         _monitoringCancellation?.Dispose();
         _monitoringCancellation = null;
-        _monitoring = false;
         _eventLog.Record("Monitoring disabled");
         SetTrayState(TrayState.Off);
+    }
+
+    private async Task RunMonitoringLoopAsync(CancellationToken token)
+    {
+        while (!token.IsCancellationRequested)
+        {
+            try
+            {
+                using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(token, _intervalChangeCts.Token);
+                await Task.Delay(TimeSpan.FromSeconds(_configStore.Config.IntervalSeconds), linkedCts.Token);
+            }
+            catch (OperationCanceledException)
+            {
+                if (token.IsCancellationRequested)
+                {
+                    break;
+                }
+                continue;
+            }
+
+            try
+            {
+                await ExecuteScreenshotCycleAsync(token);
+            }
+            catch (Exception ex)
+            {
+                _eventLog.Record($"Cycle error: {ex.Message}");
+            }
+        }
+    }
+
+    private async Task ExecuteScreenshotCycleAsync(CancellationToken token)
+    {
+        if (_uploadInProgress)
+        {
+            return;
+        }
+
+        _uploadInProgress = true;
+        try
+        {
+            var preInputKey = _configStore.Config.PreScreenshotKey;
+            if (preInputKey != Keys.None)
+            {
+                var activeWindow = InputSimulator.GetForegroundWindow();
+                if (activeWindow == IntPtr.Zero)
+                {
+                    _eventLog.Record("Input skipped: no active window");
+                }
+                else
+                {
+                    InputSimulator.SendKey((ushort)preInputKey);
+                    _eventLog.Record($"Input sent: {preInputKey}");
+                }
+
+                var delayMs = _configStore.Config.InputDelayMs;
+                if (delayMs > 0)
+                {
+                    await Task.Delay(delayMs, token);
+                }
+            }
+            else
+            {
+                _eventLog.Record("Input skipped: disabled");
+            }
+
+            string? screenshotPath = null;
+            try
+            {
+                var monitor = _monitorCatalog.GetSelectedOrDefault(_configStore.Config.SelectedMonitor);
+                screenshotPath = _capture.CaptureToTempPng(monitor);
+                await _uploader.UploadScreenshotAsync(
+                    _configStore.Config.WebhookUrl,
+                    screenshotPath,
+                    "📸 Screenshot",
+                    token);
+
+                _stats.ScreenshotsSent++;
+                _stats.LastUploadTime = DateTime.Now;
+
+                if (_stats.LastUploadFailed)
+                {
+                    _eventLog.Record("Upload recovered");
+                }
+
+                _stats.LastUploadFailed = false;
+                SetTrayState(_monitoring ? TrayState.On : TrayState.Off);
+            }
+            catch (OperationCanceledException)
+            {
+            }
+            catch (Exception ex)
+            {
+                _stats.UploadErrors++;
+                _stats.LastUploadFailed = true;
+                _eventLog.Record($"Upload failed: {ex.Message}");
+                SetTrayState(TrayState.Error);
+            }
+            finally
+            {
+                if (!string.IsNullOrWhiteSpace(screenshotPath) && File.Exists(screenshotPath))
+                {
+                    try
+                    {
+                        File.Delete(screenshotPath);
+                    }
+                    catch
+                    {
+                    }
+                }
+            }
+        }
+        finally
+        {
+            _uploadInProgress = false;
+        }
     }
 
     private async Task SendScreenshotAsync(bool manual, CancellationToken cancellationToken = default)
@@ -167,7 +300,6 @@ internal sealed class MacroWatchApplicationContext : ApplicationContext
                 }
                 catch
                 {
-                    // Temporary screenshots are best-effort cleanup.
                 }
             }
 
@@ -190,7 +322,7 @@ internal sealed class MacroWatchApplicationContext : ApplicationContext
 
     private void SetInterval()
     {
-        var value = SimpleInput.Prompt("Set Interval", "Interval in seconds (minimum 15):", _configStore.Config.IntervalSeconds.ToString());
+        var value = SimpleInput.Prompt("Set Interval", "Interval in seconds (minimum 5):", _configStore.Config.IntervalSeconds.ToString());
         if (value is null)
         {
             return;
@@ -202,23 +334,95 @@ internal sealed class MacroWatchApplicationContext : ApplicationContext
             return;
         }
 
-        _configStore.Config.IntervalSeconds = Math.Max(15, seconds);
-        _configStore.Save();
-        ApplyTimerInterval();
-        _eventLog.Record($"Interval changed: {_configStore.Config.IntervalSeconds} seconds");
+        var oldInterval = _configStore.Config.IntervalSeconds;
+        var newInterval = Math.Max(5, seconds);
+        if (oldInterval != newInterval)
+        {
+            _configStore.Config.IntervalSeconds = newInterval;
+            _configStore.Save();
+            TriggerIntervalChange();
+            _eventLog.Record($"Interval changed: {_configStore.Config.IntervalSeconds} seconds");
+        }
     }
 
     private void SelectMonitor()
     {
-        var selected = MonitorPicker.Pick(_monitorCatalog.GetMonitors(), _configStore.Config.SelectedMonitor);
+        var monitors = new List<MonitorInfo>();
+        try
+        {
+            monitors.Add(new MonitorInfo("ALL", "All Monitors", SystemInformation.VirtualScreen));
+        }
+        catch
+        {
+        }
+
+        try
+        {
+            monitors.AddRange(_monitorCatalog.GetMonitors());
+        }
+        catch (Exception ex)
+        {
+            _eventLog.Record($"Failed to enumerate monitors: {ex.Message}");
+        }
+
+        if (monitors.Count == 0)
+        {
+            MessageBox.Show("No monitors detected.", "MacroWatch", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            return;
+        }
+
+        var selected = MonitorPicker.Pick(monitors, _configStore.Config.SelectedMonitor);
         if (selected is null)
         {
             return;
         }
 
-        _configStore.Config.SelectedMonitor = selected.Id;
-        _configStore.Save();
-        _eventLog.Record($"Monitor changed: {selected.DisplayName}");
+        var oldSelection = _configStore.Config.SelectedMonitor;
+        if (!string.Equals(oldSelection, selected.Id, StringComparison.OrdinalIgnoreCase))
+        {
+            _configStore.Config.SelectedMonitor = selected.Id;
+            _configStore.Save();
+            _eventLog.Record($"Monitor mode changed: {selected.DisplayName}");
+        }
+    }
+
+    private void SetPreScreenshotInput()
+    {
+        using var binder = new KeyBinderForm(_configStore.Config.PreScreenshotKey);
+        if (binder.ShowDialog() == DialogResult.OK)
+        {
+            var oldKey = _configStore.Config.PreScreenshotKey;
+            var newKey = binder.SelectedKey;
+            if (oldKey != newKey)
+            {
+                _configStore.Config.PreScreenshotKey = newKey;
+                _configStore.Save();
+                _eventLog.Record($"Input binding changed: {newKey}");
+            }
+        }
+    }
+
+    private void SetInputDelay()
+    {
+        var value = SimpleInput.Prompt("Set Input Delay", "Delay in milliseconds:", _configStore.Config.InputDelayMs.ToString());
+        if (value is null)
+        {
+            return;
+        }
+
+        if (!int.TryParse(value, out var ms) || ms < 0)
+        {
+            MessageBox.Show("Enter a non-negative number of milliseconds.", "MacroWatch", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            return;
+        }
+
+        var oldDelay = _configStore.Config.InputDelayMs;
+        if (oldDelay != ms)
+        {
+            _configStore.Config.InputDelayMs = ms;
+            _configStore.Save();
+            _eventLog.Record($"Input delay changed: {ms} ms");
+        }
     }
 
     private void ToggleStartup()
@@ -235,14 +439,12 @@ internal sealed class MacroWatchApplicationContext : ApplicationContext
         window.Show();
     }
 
-    private void ApplyTimerInterval()
+    private void TriggerIntervalChange()
     {
-        _timer.Interval = Math.Max(15, _configStore.Config.IntervalSeconds) * 1000;
-        if (_monitoring)
-        {
-            _timer.Stop();
-            _timer.Start();
-        }
+        var oldCts = _intervalChangeCts;
+        _intervalChangeCts = new CancellationTokenSource();
+        oldCts.Cancel();
+        oldCts.Dispose();
     }
 
     private void SetTrayState(TrayState state)
@@ -265,10 +467,12 @@ internal sealed class MacroWatchApplicationContext : ApplicationContext
 
     private void Exit()
     {
-        _timer.Stop();
+        _monitoring = false;
         _monitoringCancellation?.Cancel();
         _monitoringCancellation?.Dispose();
         _monitoringCancellation = null;
+        _intervalChangeCts.Cancel();
+        _intervalChangeCts.Dispose();
         _notifyIcon.Visible = false;
         _notifyIcon.Dispose();
         ExitThread();
@@ -278,8 +482,8 @@ internal sealed class MacroWatchApplicationContext : ApplicationContext
     {
         if (disposing)
         {
-            _timer.Dispose();
             _monitoringCancellation?.Dispose();
+            _intervalChangeCts.Dispose();
             _notifyIcon.Dispose();
         }
 

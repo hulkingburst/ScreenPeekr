@@ -24,10 +24,45 @@ internal sealed class MonitorCatalog : IDisposable
 
     public MonitorInfo GetSelectedOrDefault(string selectedMonitorId)
     {
-        var monitors = GetMonitors();
-        return monitors.FirstOrDefault(m => string.Equals(m.Id, selectedMonitorId, StringComparison.OrdinalIgnoreCase))
-            ?? monitors.FirstOrDefault()
-            ?? throw new InvalidOperationException("No monitors were detected.");
+        if (string.Equals(selectedMonitorId, "ALL", StringComparison.OrdinalIgnoreCase))
+        {
+            try
+            {
+                return new MonitorInfo("ALL", "All Monitors", SystemInformation.VirtualScreen);
+            }
+            catch
+            {
+                // Fallback to single monitor if getting virtual screen fails
+            }
+        }
+
+        try
+        {
+            var monitors = GetMonitors();
+            var matched = monitors.FirstOrDefault(m => string.Equals(m.Id, selectedMonitorId, StringComparison.OrdinalIgnoreCase))
+                ?? monitors.FirstOrDefault();
+            if (matched != null)
+            {
+                return matched;
+            }
+        }
+        catch
+        {
+            // Fallback to primary screen below
+        }
+
+        try
+        {
+            var primary = Screen.PrimaryScreen;
+            return new MonitorInfo(
+                primary?.DeviceName ?? "PRIMARY",
+                "Primary Display",
+                primary?.Bounds ?? new System.Drawing.Rectangle(0, 0, 1920, 1080));
+        }
+        catch
+        {
+            throw new InvalidOperationException("No monitors were detected.");
+        }
     }
 
     private static string TryGetFriendlyMonitorName(string deviceName, IReadOnlyDictionary<string, string> wmiNames)

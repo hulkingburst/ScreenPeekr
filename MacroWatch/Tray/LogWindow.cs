@@ -25,14 +25,23 @@ internal sealed class LogWindow : Form
 
     private static string BuildText(AppConfig config, RuntimeStats stats, string status, string selectedMonitor, EventLogStore eventLog)
     {
+        var monitorText = string.Equals(config.SelectedMonitor, "ALL", StringComparison.OrdinalIgnoreCase)
+            ? "All Monitors"
+            : selectedMonitor;
+
+        var keyText = config.PreScreenshotKey == System.Windows.Forms.Keys.None 
+            ? "None" 
+            : config.PreScreenshotKey.ToString();
+
         var lines = new List<string>
         {
             $"Status: {status}",
-            $"Selected Monitor: {selectedMonitor}",
-            $"Current Interval: {config.IntervalSeconds} seconds",
+            $"Selected Monitor: {monitorText}",
+            $"Interval: {config.IntervalSeconds} seconds",
+            $"Pre-screenshot Input Key: {keyText}",
+            $"Input Delay: {config.InputDelayMs} ms",
             $"Screenshots Sent: {stats.ScreenshotsSent}",
             $"Upload Errors: {stats.UploadErrors}",
-            $"Started Time: {stats.StartedTime:yyyy-MM-dd HH:mm:ss}",
             $"Last Upload Time: {(stats.LastUploadTime.HasValue ? stats.LastUploadTime.Value.ToString("yyyy-MM-dd HH:mm:ss") : "Never")}",
             string.Empty,
             "Events:",
