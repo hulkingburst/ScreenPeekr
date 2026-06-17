@@ -84,6 +84,7 @@
         letter-spacing: 0.3px;
     }
 
+    /* BUTTON BASE */
     .btn {
         display: inline-flex;
         align-items: center;
@@ -96,7 +97,6 @@
         text-decoration: none;
         font-weight: 600;
         transition: 0.2s;
-        width: fit-content;
     }
 
     .btn:hover {
@@ -104,10 +104,32 @@
         transform: translateY(-1px);
     }
 
+    /* BIG CTA BUTTON */
+    .cta-wrapper {
+        display: flex;
+        justify-content: center;
+        margin-top: 14px;
+    }
+
+    .cta {
+        padding: 18px 32px;
+        font-size: 16px;
+        border-radius: 14px;
+        min-width: 260px;
+        text-align: center;
+        box-shadow: 0 10px 30px rgba(59,130,246,0.25);
+    }
+
+    .cta:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 14px 40px rgba(59,130,246,0.35);
+    }
+
     .meta {
         font-size: 13px;
         color: var(--muted);
         margin-top: 10px;
+        line-height: 1.5;
     }
 
     /* README styling */
@@ -171,16 +193,18 @@
 
             <div id="version" class="meta loading">Loading latest version…</div>
 
-            <a id="downloadBtn" class="btn" href="#">
-                Download .exe
-            </a>
+            <div class="cta-wrapper">
+                <a id="downloadBtn" class="btn cta" href="#">
+                    Download Latest .exe
+                </a>
+            </div>
 
-            <div class="meta">
+            <div class="meta" style="text-align:center;">
                 Single executable • No installer • Windows 10/11
             </div>
         </div>
 
-        <!-- FEATURES (simple but makes it feel real) -->
+        <!-- FEATURES -->
         <div class="card">
             <h3>What it does</h3>
             <div class="meta">
