@@ -1,99 +1,96 @@
-# MacroWatch v2.0.0
+# ScreenPeekr v2.0.0
 
-A minimal Windows system tray utility for unattended game or Roblox monitoring.
+A minimal Windows system tray utility for automated screen capture and webhook-based PC monitoring.
 
-MacroWatch periodically captures one selected monitor at native resolution and uploads a PNG screenshot to a Discord webhook.
+ScreenPeekr periodically captures a selected display (or full virtual desktop) and uploads PNG screenshots to a configured Discord webhook. It is designed for lightweight, unattended monitoring of your own computer.
 
 ## Features
 
-- 🪟 Windows system tray integration
-- 📸 Periodic monitor screenshot capture
-- 🔗 Discord webhook uploads
-- ⚙️ Configurable capture interval (minimum 5 seconds)
-- 🖥️ Multi-monitor support with friendly names
-- 📝 Local logging and configuration storage
-- 🔄 Auto-startup with Windows option
-- ⌨️ **NEW in v2.0:** Pre-screenshot input simulation (send keyboard input before capture)
-- ⏱️ **NEW in v2.0:** Configurable input delay
-- 🎯 **NEW in v2.0:** Virtual screen capture support (all monitors at once)
+- 🪟 Windows system tray integration (runs headless)
+- 📸 Scheduled screenshot capture at configurable intervals
+- 🔗 Discord webhook image uploads
+- ⚙️ Adjustable capture interval (minimum 5 seconds)
+- 🖥️ Multi-monitor support with friendly device names
+- 🧭 Full virtual desktop capture (all monitors combined)
+- ⌨️ Optional pre-capture input simulation (keyboard action before capture)
+- ⏱️ Configurable input delay (timing control before capture)
+- 📝 Local configuration storage + logging
+- 🔄 Optional Windows startup launch
+- 🚫 No dashboard, no account system, no cloud backend
 
-## What's New in v2.0.0
+## What’s New in v2.0.0
 
-- **Pre-Screenshot Input**: Optionally send a keyboard input (e.g., Alt+Tab, Space) before each screenshot capture
-- **Input Delay Configuration**: Set a delay between sending input and capturing the screenshot
-- **Virtual Screen Support**: Capture all monitors combined as a single image
-- **Minimum Interval Reduced**: Changed from 15 seconds to 5 seconds for more frequent captures
-- **Improved Monitor Detection**: Better WMI-based friendly name resolution with fallbacks
-- **Enhanced Configuration**: New config options stored alongside existing settings
+- Pre-capture input simulation: send a keyboard input before each screenshot
+- Input delay control: fine-tune timing between input and capture
+- Virtual screen capture mode: capture entire desktop across all monitors
+- Lower minimum interval: reduced from 15s to 5s minimum capture interval
+- Improved monitor detection: better device naming and fallback handling
+- Expanded configuration system: new options alongside existing settings
 
 ## Quick Start
 
-1. Download the latest release executable
-2. Run `MacroWatch.exe` - it will appear in your system tray
-3. Right-click the tray icon and set your Discord webhook URL
-4. Configure the capture interval
-5. (Optional) Set pre-screenshot input if you need to send a key before each capture
-6. (Optional) Adjust input delay if needed
-7. Select your monitor
-8. Toggle monitoring ON/OFF from the tray menu
+1. Download the latest release
+2. Run ScreenPeekr.exe (appears in system tray)
+3. Right-click tray icon → set your Discord webhook URL
+4. Configure capture interval
+5. Select monitor or virtual screen mode
+6. (Optional) configure pre-capture input + delay
+7. Toggle monitoring ON
 
 ## Installation from Source
 
 Requirements:
 - Windows 10 or newer
-- .NET 8 SDK with Windows Desktop support
+- .NET 8 SDK with Windows Desktop workload
 
-Build and run:
+### Run in development
 
-```powershell
-dotnet run --project .\MacroWatch.csproj
-```
+dotnet run --project .\ScreenPeekr.csproj
 
-Build a release executable:
+### Build release (framework-dependent)
 
-```powershell
-dotnet publish .\MacroWatch.csproj -c Release -r win-x64 --self-contained false -p:PublishSingleFile=true -p:PublishReadyToRun=true
-```
+dotnet publish .\ScreenPeekr.csproj -c Release -r win-x64 --self-contained false -p:PublishSingleFile=true -p:PublishReadyToRun=true
 
-The executable will be in `bin\Release\net8.0-windows\win-x64\publish\MacroWatch.exe`
+Output:
+bin\Release\net8.0-windows\win-x64\publish\ScreenPeekr.exe
 
-Build a self-contained executable (no .NET runtime required):
+### Build self-contained (no .NET runtime required)
 
-```powershell
-dotnet publish .\MacroWatch.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:PublishReadyToRun=true
-```
+dotnet publish .\ScreenPeekr.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:PublishReadyToRun=true
 
 ## Configuration
 
-Settings are stored in `%LOCALAPPDATA%\MacroWatch\config.txt` with the following options:
+Stored at:
+%LOCALAPPDATA%\ScreenPeekr\config.txt
 
-- `webhook_url` - Discord webhook URL for uploading screenshots
-- `interval_seconds` - Capture interval in seconds (minimum 5)
-- `selected_monitor` - Selected monitor device identifier (or "ALL" for virtual screen)
-- `start_with_windows` - Auto-launch on Windows startup (true/false)
-- `pre_screenshot_key` - Keyboard key to send before capture (Keys enum name or numeric value)
-- `input_delay_ms` - Delay in milliseconds between sending input and capturing (default 250)
+Settings:
+
+- webhook_url — Discord webhook URL for uploads  
+- interval_seconds — screenshot interval (minimum 5)  
+- selected_monitor — monitor ID or ALL for full virtual desktop  
+- start_with_windows — auto-start on boot (true/false)  
+- pre_screenshot_key — optional keyboard input before capture  
+- input_delay_ms — delay between input and capture (default 250)
 
 ## Discord Webhook Setup
 
-1. In Discord, open your target server channel settings
+1. Open Discord server settings
 2. Go to Integrations → Webhooks
 3. Create or copy a webhook URL
-4. In MacroWatch, right-click the tray icon and choose `Set Webhook...`
-5. Use `Take Screenshot Now` to verify
+4. Paste into ScreenPeekr via tray menu: Set Webhook...
+5. Use Take Screenshot Now to test
 
 ## Tray Menu
 
-```
-MacroWatch
-─────────────────────────────────
-Status: OFF/ON/ERROR
+ScreenPeekr
+────────────────────────────
+Status: OFF / ON / ERROR
 
 Toggle ON/OFF
 Set Webhook...
 Set Interval...
 Select Monitor...
-Set Pre-Screenshot Input...
+Set Pre-Capture Input...
 Set Input Delay...
 
 Take Screenshot Now
@@ -103,49 +100,47 @@ Show Log
 Start With Windows ✓
 
 Exit
-```
 
 ## Behavior
 
-- Starts in the system tray (no main window)
-- Always starts in OFF state
-- Gray icon = OFF, Green icon = ON, Red icon = ERROR
-- When enabled, sends a screenshot immediately, then continues on the configured interval
-- Upload failures are logged locally and indicated by the red tray icon
-- Manual screenshots can be sent anytime via the tray menu
-- Pre-screenshot input is only sent when monitoring is enabled and a key is configured
+- Starts in system tray
+- Defaults to OFF state
+- Gray = idle, Green = active, Red = error
+- Captures immediately when enabled, then continues on interval
+- Upload failures are logged locally
 - Temporary PNG files are deleted after upload
-- Monitor friendly names are resolved from Windows device information
+- Pre-capture input only runs when enabled
 
 ## Version History
 
 ### v2.0.0 (Current)
-- Added pre-screenshot input simulation
-- Added configurable input delay
-- Added virtual screen support ("ALL" monitors capture)
-- Reduced minimum interval from 15 to 5 seconds
-- Improved monitor friendly name detection
+
+- Pre-capture input simulation added
+- Configurable input delay added
+- Virtual desktop capture mode added
+- Minimum interval reduced to 5 seconds
+- Improved monitor detection
 
 ### v1.0.0
+
 - Initial release
-- Basic screenshot capture and Discord upload
-- System tray integration
+- System tray screenshot capture
+- Discord webhook uploads
 - Multi-monitor support
-- Configuration and logging
+- Local config + logging
 
-## Minimal by Design
+## Design Philosophy
 
-MacroWatch intentionally excludes:
-- Dashboard or web interface
-- Account system
-- OCR or AI features
-- Video recording
-- Multi-monitor batch capture
-- Quality or resolution settings
-- Scheduler
-- Discord error notifications
+ScreenPeekr is intentionally minimal:
 
-It does one thing well: capture and upload screenshots to Discord on a schedule.
+- No cloud backend
+- No accounts or authentication
+- No analytics or telemetry
+- No video recording
+- No OCR or AI processing
+- No scheduling system beyond a simple interval timer
+
+It focuses on one function: scheduled screenshot capture and webhook delivery.
 
 ## License
 
