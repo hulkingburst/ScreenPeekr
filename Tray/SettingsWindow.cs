@@ -97,7 +97,8 @@ internal sealed class SettingsWindow : Form
             Top = 151,
             Width = 476,
             Height = 25,
-            DropDownStyle = ComboBoxStyle.DropDownList
+            DropDownStyle = ComboBoxStyle.DropDownList,
+            DisplayMember = "DisplayName"
         };
 
         // Pre-Screenshot Input
