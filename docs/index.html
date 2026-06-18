@@ -1,335 +1,115 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ScreenPeekr</title>
-    <!-- Include Marked.js for rendering Markdown from the README -->
-    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-    
-    <style>
-        /* --- CSS Variables & Theming --- */
-        :root {
-            /* Default: Dark Mode (GitHub Dark Dim) */
-            --color-bg-canvas: #0d1117;
-            --color-bg-subtle: #161b22;
-            --color-border-default: #30363d;
-            --color-fg-default: #c9d1d9;
-            --color-fg-muted: #8b949e;
-            --color-accent-fg: #58a6ff;
-            --color-btn-primary-bg: #238636;
-            --color-btn-primary-hover-bg: #2ea043;
-            --color-btn-secondary-bg: #21262d;
-            --color-btn-secondary-hover-bg: #30363d;
-            --color-btn-text: #ffffff;
-            --header-height: 70px;
-        }
-
-        /* Light Mode Overrides */
-        body.light-mode {
-            --color-bg-canvas: #ffffff;
-            --color-bg-subtle: #f6f8fa;
-            --color-border-default: #d0d7de;
-            --color-fg-default: #24292f;
-            --color-fg-muted: #57606a;
-            --color-accent-fg: #0969da;
-            --color-btn-primary-bg: #2da44e;
-            --color-btn-primary-hover-bg: #2c974b;
-            --color-btn-secondary-bg: #f6f8fa;
-            --color-btn-secondary-hover-bg: #f3f4f6;
-            --color-btn-text: #24292f; 
-        }
-
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
-            background-color: var(--color-bg-canvas);
-            color: var(--color-fg-default);
-            margin: 0;
-            line-height: 1.5;
-            transition: background-color 0.3s, color 0.3s;
-        }
-
-        header {
-            position: sticky;
-            top: 0;
-            z-index: 100;
-            background-color: var(--color-bg-canvas); 
-            backdrop-filter: blur(10px);
-            -webkit-backdrop-filter: blur(10px);
-            border-bottom: 1px solid var(--color-border-default);
-            height: var(--header-height);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: 0 20px;
-            transition: background-color 0.3s, border-color 0.3s;
-        }
-
-        .header-content {
-            width: 100%;
-            max-width: 1012px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-
-        .brand {
-            font-weight: 600;
-            font-size: 1.2rem;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-
-        /* Theme Toggle Button */
-        #theme-toggle {
-            background: none;
-            border: none;
-            cursor: pointer;
-            padding: 5px;
-            border-radius: 50%;
-            color: var(--color-fg-default);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            margin-right: 15px;
-            transition: background 0.2s;
-        }
-        #theme-toggle:hover {
-            background-color: var(--color-bg-subtle);
-        }
-        #theme-toggle svg {
-            width: 24px;
-            height: 24px;
-            fill: currentColor;
-        }
-
-        .actions {
-            display: flex;
-            gap: 10px;
-        }
-
-        .btn {
-            appearance: none;
-            border: 1px solid var(--color-border-default);
-            border-radius: 6px;
-            color: var(--color-btn-text);
-            cursor: pointer;
-            display: inline-flex;
-            align-items: center;
-            font-size: 14px;
-            font-weight: 500;
-            line-height: 20px;
-            padding: 5px 16px;
-            text-decoration: none;
-            background-color: var(--color-btn-secondary-bg);
-        }
-
-        .btn:hover {
-            background-color: var(--color-btn-secondary-hover-bg);
-            border-color: var(--color-border-default);
-        }
-
-        .btn-primary {
-            background-color: var(--color-btn-primary-bg);
-            border-color: rgba(240, 246, 252, 0.1);
-            color: #ffffff;
-        }
-
-        .btn-primary:hover {
-            background-color: var(--color-btn-primary-hover-bg);
-        }
-
-        main {
-            max-width: 1012px;
-            margin: 24px auto;
-            padding: 0 20px;
-        }
-
-        /* Markdown Styling */
-        .markdown-body { font-size: 16px; }
-        .markdown-body h1, .markdown-body h2 { 
-            border-bottom: 1px solid var(--color-border-default); 
-            padding-bottom: .3em; 
-            margin-top: 1.5em;
-        }
-        .markdown-body h1 { font-size: 2em; }
-        .markdown-body h2 { font-size: 1.5em; }
-        .markdown-body code { 
-            background: rgba(110, 118, 129, 0.4); 
-            padding: 0.2em 0.4em; 
-            border-radius: 6px; 
-            font-family: ui-monospace,SFMono-Regular,SF Mono,Menlo,Consolas,Liberation Mono,monospace; 
-            font-size: 85%; 
-        }
-        body.light-mode .markdown-body code {
-            background: rgba(175,184,193,0.2);
-        }
-        .markdown-body pre { 
-            background: var(--color-bg-subtle); 
-            padding: 16px; 
-            border-radius: 6px; 
-            overflow: auto; 
-            border: 1px solid var(--color-border-default);
-        }
-        .markdown-body pre code { background: transparent; padding: 0; }
-        .markdown-body img { 
-            max-width: 100%; 
-            box-sizing: content-box; 
-            background-color: var(--color-bg-canvas); 
-            border: 1px solid var(--color-border-default); 
-            border-radius: 6px; 
-        }
-        .markdown-body blockquote { 
-            padding: 0 1em; 
-            color: var(--color-fg-muted); 
-            border-left: .25em solid var(--color-border-default); 
-            margin: 0; 
-        }
-        .markdown-body ul, .markdown-body ol { padding-left: 2em; }
-        .markdown-body a { color: var(--color-accent-fg); }
-        
-        #loading, #error-msg {
-            text-align: center;
-            padding: 40px;
-            color: var(--color-fg-muted);
-        }
-        .error-link { color: var(--color-accent-fg); text-decoration: underline; }
-        
-        @media (max-width: 600px) {
-            .header-content { flex-direction: column; gap: 10px; align-items: stretch; }
-            .brand { justify-content: center; }
-            .actions { flex-direction: column; }
-            .btn { width: 100%; justify-content: center; }
-        }
-    </style>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>ScreenPeekr</title>
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/dompurify@3/dist/purify.min.js"></script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/github-markdown-css@5/github-markdown-light.css" />
+<style>
+  :root { --bg:#fff; --accent:#2563eb; --accent-hover:#1d4ed8; --muted:#6b7280; --border:#e5e7eb; }
+  * { box-sizing: border-box; }
+  html, body { margin:0; padding:0; background:var(--bg); color:#111; font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif; }
+  header.bar {
+    position: sticky; top: 0; z-index: 50;
+    background: rgba(255,255,255,0.95);
+    backdrop-filter: saturate(180%) blur(10px);
+    border-bottom: 1px solid var(--border);
+    padding: 14px 20px;
+    display: flex; flex-wrap: wrap; gap: 12px; align-items: center; justify-content: space-between;
+  }
+  .title { font-weight: 700; font-size: 18px; }
+  .title a { color:inherit; text-decoration:none; }
+  .title small { color: var(--muted); font-weight: 500; margin-left: 8px; font-size: 13px; }
+  .actions { display:flex; gap:10px; flex-wrap:wrap; }
+  .btn {
+    display:inline-flex; align-items:center; gap:8px;
+    padding: 9px 16px; border-radius: 8px;
+    font-weight: 600; font-size: 14px; text-decoration: none;
+    border: 1px solid transparent; cursor:pointer; transition: background .15s, transform .05s;
+  }
+  .btn:active { transform: translateY(1px); }
+  .btn-primary { background: var(--accent); color:#fff; }
+  .btn-primary:hover { background: var(--accent-hover); }
+  .btn-secondary { background:#f3f4f6; color:#111; border-color: var(--border); }
+  .btn-secondary:hover { background:#e5e7eb; }
+  .btn[aria-disabled="true"] { opacity:.5; pointer-events:none; }
+  main { max-width: 920px; margin: 0 auto; padding: 32px 20px 80px; }
+  .markdown-body { background: transparent; }
+  #status { color: var(--muted); font-size: 14px; padding: 40px 0; text-align:center; }
+</style>
 </head>
 <body>
+<header class="bar">
+  <div class="title">
+    <a href="https://github.com/hulkingburst/screenpeekr">ScreenPeekr</a>
+    <small id="version">loading…</small>
+  </div>
+  <div class="actions">
+    <a id="dl-exe" class="btn btn-primary" aria-disabled="true" href="#">⬇ Download latest .exe</a>
+    <a id="dl-src" class="btn btn-secondary" aria-disabled="true" href="#">⬇ Download full source code</a>
+  </div>
+</header>
+<main>
+  <article id="readme" class="markdown-body"><div id="status">Loading latest README…</div></article>
+</main>
+<script>
+const REPO = "hulkingburst/screenpeekr";
 
-    <header>
-        <div class="header-content">
-            <div class="brand">
-                <!-- Theme Toggle Icon -->
-                <button id="theme-toggle" aria-label="Toggle Dark Mode">
-                    <svg class="icon-sun" style="display: none;" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg>
-                    <svg class="icon-moon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>
-                </button>
+async function init() {
+  try {
+    const rel = await fetch(`https://api.github.com/repos/${REPO}/releases/latest`).then(r => {
+      if (!r.ok) throw new Error("no latest release");
+      return r.json();
+    });
+    document.getElementById("version").textContent = rel.tag_name || "";
+    const exe = (rel.assets || []).find(a => /\.exe$/i.test(a.name));
+    const exeBtn = document.getElementById("dl-exe");
+    if (exe) {
+      exeBtn.href = exe.browser_download_url;
+      exeBtn.removeAttribute("aria-disabled");
+      exeBtn.textContent = `⬇ Download ${exe.name}`;
+    } else {
+      exeBtn.textContent = "No .exe in latest release";
+    }
+    const srcBtn = document.getElementById("dl-src");
+    srcBtn.href = rel.zipball_url || `https://github.com/${REPO}/archive/refs/tags/${rel.tag_name}.zip`;
+    srcBtn.removeAttribute("aria-disabled");
+  } catch (e) {
+    document.getElementById("version").textContent = "no releases";
+    const srcBtn = document.getElementById("dl-src");
+    srcBtn.href = `https://github.com/${REPO}/archive/refs/heads/main.zip`;
+    srcBtn.removeAttribute("aria-disabled");
+  }
 
-                <svg height="32" viewBox="0 0 16 16" version="1.1" width="32" aria-hidden="true" fill="currentColor"><path d="M8 0c4.42 0 8 3.58 8 8a8.013 8.013 0 0 1-5.45 7.59c-.4.08-.55-.17-.55-.38 0-.27.01-1.13.01-2.2 0-.75-.25-1.23-.54-1.48 1.78-.2 3.65-.88 3.65-3.95 0-.88-.31-1.59-.82-2.15.08-.2.36-1.02-.08-2.12 0 0-.67-.22-2.2.82-.64-.18-1.32-.27-2-.27-.68 0-1.36.09-2 .27-1.53-1.03-2.2-.82-2.2-.82-.44 1.1-.16 1.92-.08 2.12-.51.56-.82 1.28-.82 2.15 0 3.06 1.86 3.75 3.64 3.95-.23.2-.44.55-.51 1.07-.46.46-1.61.65-2.33-.08-.44-.46-.61-1.04-.22-1.65 0 0 .5-.12.98.52.25.35.66.41.98.08 0 0 .07-.45-.09-.92-.2-.57-.79-1.12-1.92-1.09C1.58 4.31.5 5.81.5 8c0 3.16 2.05 4.68 4.02 4.92-.08.4-.32 1.1-.32 2.23 0 .21-.15.46-.55.38A8.013 8.013 0 0 1 0 8c0-4.42 3.58-8 8-8Z"></path></svg>
-                <span>ScreenPeekr</span>
-            </div>
-            <div class="actions">
-                <a id="btn-exe" href="#" class="btn btn-primary" target="_blank">Download Latest EXE</a>
-                <a id="btn-source" href="#" class="btn" target="_blank">Download Source</a>
-            </div>
-        </div>
-    </header>
-
-    <main>
-        <div id="loading">Loading content...</div>
-        <div id="error-msg" style="display: none;"></div>
-        <div id="readme-content" class="markdown-body" style="display: none;"></div>
-    </main>
-
-    <script>
-        // --- 1. THEME LOGIC (Runs immediately, independent of API) ---
-        (function initTheme() {
-            const toggleBtn = document.getElementById('theme-toggle');
-            const sunIcon = document.querySelector('.icon-sun');
-            const moonIcon = document.querySelector('.icon-moon');
-
-            function setTheme(theme) {
-                if (theme === 'light') {
-                    document.body.classList.add('light-mode');
-                    localStorage.setItem('theme', 'light');
-                    sunIcon.style.display = 'block';
-                    moonIcon.style.display = 'none';
-                } else {
-                    document.body.classList.remove('light-mode');
-                    localStorage.setItem('theme', 'dark');
-                    sunIcon.style.display = 'none';
-                    moonIcon.style.display = 'block';
-                }
-            }
-
-            const savedTheme = localStorage.getItem('theme');
-            if (savedTheme) {
-                setTheme(savedTheme);
-            } else {
-                setTheme('dark');
-            }
-
-            toggleBtn.addEventListener('click', () => {
-                const isLight = document.body.classList.contains('light-mode');
-                setTheme(isLight ? 'dark' : 'light');
-            });
-        })();
-
-        // --- 2. DATA FETCHING (Separate from Theme) ---
-        (async function loadData() {
-            const owner = "hulkingburst";
-            const repo = "screenpeekr";
-            const btnExe = document.getElementById("btn-exe");
-            const btnSource = document.getElementById("btn-source");
-            const readmeContainer = document.getElementById("readme-content");
-            const loadingDiv = document.getElementById("loading");
-            const errorDiv = document.getElementById("error-msg");
-            
-            // Fallback URL
-            const repoUrl = `https://github.com/${owner}/${repo}`;
-
-            try {
-                // 1. Fetch Release Info
-                let releaseData = null;
-                try {
-                    const releaseRes = await fetch(`https://api.github.com/repos/${owner}/${repo}/releases/latest`);
-                    if (releaseRes.ok) {
-                        releaseData = await releaseRes.json();
-                    }
-                } catch (e) { console.warn("Release fetch failed", e); }
-
-                if (releaseData) {
-                    btnSource.href = releaseData.zipball_url;
-                    const exeAsset = releaseData.assets.find(asset => asset.name.toLowerCase().endsWith('.exe'));
-                    if (exeAsset) {
-                        btnExe.href = exeAsset.browser_download_url;
-                        btnExe.innerText = `Download Latest EXE (v${releaseData.tag_name})`;
-                    } else {
-                        btnExe.href = releaseData.html_url;
-                        btnExe.innerText = "View Latest Release";
-                    }
-                } else {
-                    // Fallback if API fails
-                    btnExe.href = `${repoUrl}/releases`;
-                    btnExe.innerText = "Get Latest Release";
-                    btnSource.href = `${repoUrl}/archive/refs/heads/main.zip`;
-                }
-
-                // 2. Fetch README
-                const readmeRes = await fetch(`https://api.github.com/repos/${owner}/${repo}/readme`);
-                if (!readmeRes.ok) throw new Error("Could not fetch README");
-
-                const readmeData = await readmeRes.json();
-                const decodedContent = atob(readmeData.content);
-                
-                readmeContainer.innerHTML = marked.parse(decodedContent);
-                
-                // Swap visibility
-                loadingDiv.style.display = "none";
-                readmeContainer.style.display = "block";
-
-            } catch (error) {
-                console.error(error);
-                loadingDiv.style.display = "none";
-                errorDiv.style.display = "block";
-                errorDiv.innerHTML = `
-                    <p><strong>Could not load data from GitHub API.</strong></p>
-                    <p>This might be due to network restrictions or API rate limits.</p>
-                    <p>Please visit the repository directly:</p>
-                    <p><a href="${repoUrl}" class="error-link">Go to ${repoUrl}</a></p>
-                `;
-            }
-        })();
-    </script>
+  try {
+    const repo = await fetch(`https://api.github.com/repos/${REPO}`).then(r => r.json());
+    const branch = repo.default_branch || "main";
+    let md = "";
+    for (const name of ["README.md","readme.md","README.MD","Readme.md"]) {
+      const res = await fetch(`https://raw.githubusercontent.com/${REPO}/${branch}/${name}`);
+      if (res.ok) { md = await res.text(); break; }
+    }
+    if (!md) throw new Error("README not found");
+    const rawBase = `https://raw.githubusercontent.com/${REPO}/${branch}/`;
+    const html = DOMPurify.sanitize(marked.parse(md, { gfm:true, breaks:false }));
+    const container = document.getElementById("readme");
+    container.innerHTML = html;
+    container.querySelectorAll("img").forEach(img => {
+      const s = img.getAttribute("src") || "";
+      if (!/^https?:/i.test(s) && !s.startsWith("data:")) img.src = new URL(s, rawBase).href;
+    });
+    container.querySelectorAll("a").forEach(a => {
+      const h = a.getAttribute("href") || "";
+      if (h.startsWith("#") || /^https?:/i.test(h) || h.startsWith("mailto:")) return;
+      a.href = new URL(h, `https://github.com/${REPO}/blob/${branch}/`).href;
+    });
+  } catch (e) {
+    document.getElementById("readme").innerHTML = `<p style="color:#b00">Could not load README: ${e.message}</p>`;
+  }
+}
+init();
+</script>
 </body>
 </html>
