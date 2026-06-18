@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>ScreenPeekr - Download Latest</title>
+
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+
+  <style>
+    :root {
+      --bg: #0f1115;
+      --card: #161a22;
+      --text: #e6e6e6;
+      --muted: #9aa4b2;
+      --accent: #4f7cff;
+      --border: #2a2f3a;
+      --code: #0b0d12;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family: system-ui, Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      overflow-x: hidden;
+    }
+
+    .container {
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 24px 14px;
+    }
+
+    .top {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 24px;
+      text-align: center;
+    }
+
+    .download-btn {
+      display: inline-block;
+      padding: 14px 26px;
+      font-size: 18px;
+      font-weight: 600;
+      background: var(--accent);
+      color: white;
+      border-radius: 10px;
+      text-decoration: none;
+      transition: 0.2s;
+      max-width: 100%;
+    }
+
+    .download-btn:hover {
+      opacity: 0.9;
+      transform: translateY(-1px);
+    }
+
+    .download-btn.disabled {
+      background: #555;
+      pointer-events: none;
+      opacity: 0.6;
+    }
+
+    .meta {
+      margin-top: 10px;
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .readme {
+      margin-top: 20px;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 20px;
+
+      /* IMPORTANT FIX */
+      overflow-wrap: break-word;
+      word-wrap: break-word;
+      word-break: break-word;
+    }
+
+    /* Markdown improvements */
+    .readme h1, .readme h2, .readme h3 {
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 6px;
+    }
+
+    .readme p {
+      line-height: 1.6;
+    }
+
+    .readme img {
+      max-width: 100%;
+      height: auto;
+    }
+
+    .readme a {
+      color: var(--accent);
+      word-break: break-word;
+    }
+
+    /* FIX FOR CODE BLOCKS (your main issue) */
+    .readme pre {
+      background: var(--code);
+      padding: 12px;
+      border-radius: 10px;
+      overflow-x: auto;
+      white-space: pre;
+    }
+
+    .readme code {
+      background: rgba(0,0,0,0.35);
+      padding: 2px 6px;
+      border-radius: 6px;
+    }
+
+    .readme pre code {
+      background: transparent;
+      padding: 0;
+    }
+
+    .loading {
+      color: var(--muted);
+      text-align: center;
+      padding: 20px;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="container">
+
+    <div class="top">
+      <a id="downloadBtn" class="download-btn" href="#">Download Latest</a>
+      <div class="meta" id="releaseInfo">Loading latest release...</div>
+    </div>
+
+    <div class="readme" id="readme">
+      <div class="loading">Loading README...</div>
+    </div>
+
+  </div>
+
+<script>
+const OWNER = "hulkingburst";
+const REPO  = "ScreenPeekr";
+
+const releaseAPI = `https://api.github.com/repos/${OWNER}/${REPO}/releases/latest`;
+
+async function fetchLatestRelease() {
+  const res = await fetch(releaseAPI);
+  if (!res.ok) throw new Error("Failed to fetch release");
+  return await res.json();
+}
+
+function findExeAsset(release) {
+  return release.assets?.find(a => a.name.endsWith(".exe")) || null;
+}
+
+function setDownloadButton(asset, release) {
+  const btn = document.getElementById("downloadBtn");
+  const info = document.getElementById("releaseInfo");
+
+  if (asset) {
+    btn.href = asset.browser_download_url;
+    btn.classList.remove("disabled");
+    info.textContent = `Latest: ${release.tag_name}`;
+  } else {
+    btn.classList.add("disabled");
+    btn.href = "#";
+    info.textContent = `Latest: ${release.tag_name} (No .exe found)`;
+  }
+}
+
+async function fetchReadme() {
+  const branches = ["main", "master"];
+
+  for (const b of branches) {
+    const url = `https://raw.githubusercontent.com/${OWNER}/${REPO}/${b}/README.md`;
+    const res = await fetch(url);
+    if (res.ok) return await res.text();
+  }
+
+  throw new Error("README not found");
+}
+
+function renderReadme(md) {
+  const el = document.getElementById("readme");
+  el.innerHTML = marked.parse(md);
+}
+
+async function init() {
+  try {
+    const release = await fetchLatestRelease();
+    const asset = findExeAsset(release);
+    setDownloadButton(asset, release);
+  } catch (e) {
+    document.getElementById("releaseInfo").textContent =
+      "Failed to load latest release";
+  }
+
+  try {
+    const readme = await fetchReadme();
+    renderReadme(readme);
+  } catch (e) {
+    document.getElementById("readme").innerHTML =
+      "<div class='loading'>Failed to load README</div>";
+  }
+}
+
+init();
+setInterval(init, 5 * 60 * 1000);
+</script>
+
+</body>
+</html>
