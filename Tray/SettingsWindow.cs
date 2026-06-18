@@ -191,7 +191,7 @@ internal sealed class SettingsWindow : Form
     {
         _webhookUrlTextBox.Text = _configStore.Config.WebhookUrl;
         _intervalNumeric.Value = _configStore.Config.IntervalSeconds;
-        _selectedKey = _configStore.Config.PreScreenshotKey;
+        _selectedKey = _configStore.Config.PreScreenshotKeys.Count > 0 ? _configStore.Config.PreScreenshotKeys[0] : _configStore.Config.PreScreenshotKey;
         _keyBinderButton.Text = _selectedKey == Keys.None ? "Click to Bind Key" : $"Bound: {_selectedKey}";
         _inputDelayNumeric.Value = _configStore.Config.InputDelayMs;
         _startupCheckBox.Checked = _configStore.Config.StartWithWindows;
@@ -238,6 +238,7 @@ internal sealed class SettingsWindow : Form
         _configStore.Config.WebhookUrl = _webhookUrlTextBox.Text.Trim();
         _configStore.Config.IntervalSeconds = newInterval;
         _configStore.Config.PreScreenshotKey = _selectedKey;
+        _configStore.Config.PreScreenshotKeys = _selectedKey != Keys.None ? new List<Keys> { _selectedKey } : new List<Keys>();
         _configStore.Config.InputDelayMs = (int)_inputDelayNumeric.Value;
         _configStore.Config.StartWithWindows = _startupCheckBox.Checked;
 

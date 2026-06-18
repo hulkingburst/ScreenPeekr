@@ -1,8 +1,8 @@
 {
   "version": 2,
-  "dgSpecHash": "QXJTPPbmYqY=",
+  "dgSpecHash": "4dzJ6BWVJs0=",
   "success": true,
-  "projectFilePath": "c:\\dev\\ScreenPeekr-v5.0.0\\ScreenPeekr-v5.0.0\\ScreenPeekr.csproj",
+  "projectFilePath": "C:\\dev\\ScreenPeekr-v5.0.0\\ScreenPeekr-v5.0.0\\ScreenPeekr.csproj",
   "expectedPackageFiles": [
     "C:\\Users\\renow\\.nuget\\packages\\system.codedom\\8.0.0\\system.codedom.8.0.0.nupkg.sha512",
     "C:\\Users\\renow\\.nuget\\packages\\system.management\\8.0.0\\system.management.8.0.0.nupkg.sha512"

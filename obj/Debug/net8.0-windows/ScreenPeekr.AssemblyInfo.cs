@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("ScreenPeekr")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("4.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("4.0.0-beta+4044d0410ef51ef5d6a6965712a564f654809e65")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("4.0.0-beta+daff642a6ab97fb0225e769eeb9d72c730c174e2")]
 [assembly: System.Reflection.AssemblyProductAttribute("ScreenPeekr")]
 [assembly: System.Reflection.AssemblyTitleAttribute("ScreenPeekr")]
 [assembly: System.Reflection.AssemblyVersionAttribute("4.0.0.0")]
