@@ -5,7 +5,8 @@ ScreenPeekr is a lightweight Windows system tray application for periodic screen
 It is designed for simple, unattended screen visibility while away from your computer, with a focus on reliability, minimal resource usage, and a tray-first workflow.
 ---
 
-# [WEBSITE FOR EASY DOWNLOADS](hulkingburst.github.io/screenpeekr/)
+# WEBSITE FOR EASY DOWNLOADS
+hulkingburst.github.io/screenpeekr/
 
 ---
 
