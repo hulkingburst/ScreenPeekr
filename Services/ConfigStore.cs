@@ -119,6 +119,9 @@ internal sealed class ConfigStore : IDisposable
                         config.KeyHoldDurationMs = Math.Max(0, hold);
                     }
                     break;
+                case "enable_change_detection":
+                    config.EnableChangeDetection = bool.TryParse(value, out var enableDetection) && enableDetection;
+                    break;
                 case "change_detection_sensitivity":
                     if (int.TryParse(value, out var sensitivity))
                     {

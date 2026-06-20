@@ -146,7 +146,10 @@ internal sealed class ScreenPeekrApplicationContext : ApplicationContext
         {
             try
             {
-                await _monitoringTask;
+                await Task.WhenAny(_monitoringTask, Task.Delay(TimeSpan.FromSeconds(5)));
+            }
+            catch (OperationCanceledException)
+            {
             }
             catch
             {
@@ -220,7 +223,7 @@ internal sealed class ScreenPeekrApplicationContext : ApplicationContext
             screenshotPath = _capture.CaptureToTempPng(monitor);
             await SendConfiguredInputsAsync(_configStore.Config.PostScreenshotKeys, "Post-screenshot input", token);
 
-            if (!_changeDetector.HasMeaningfulChange(screenshotPath, _configStore.Config.ChangeDetectionSensitivity))
+            if (_configStore.Config.EnableChangeDetection && !_changeDetector.HasMeaningfulChange(screenshotPath, _configStore.Config.ChangeDetectionSensitivity))
             {
                 _stats.ScreenshotsSkippedNoChange++;
                 _eventLog.Record("Upload skipped: no meaningful screenshot change detected");
@@ -447,6 +450,7 @@ internal sealed class ScreenPeekrApplicationContext : ApplicationContext
         _intervalChangeCts.Dispose();
         _notifyIcon.Visible = false;
         _notifyIcon.Dispose();
+        _changeDetector.Reset();
         ExitThread();
     }
 

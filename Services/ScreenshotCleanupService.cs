@@ -20,31 +20,37 @@ internal sealed class ScreenshotCleanupService
 
     public void Cleanup(AppConfig config, string? activePath = null)
     {
-        if (activePath is not null && (DateTime.UtcNow - _lastCleanup) < TimeSpan.FromMinutes(5))
+        try
         {
-            return;
-        }
-
-        _lastCleanup = DateTime.UtcNow;
-        var activeFullPath = string.IsNullOrWhiteSpace(activePath) ? null : Path.GetFullPath(activePath);
-        var files = Directory.EnumerateFiles(_directory, "ScreenPeekr_*.png")
-            .Select(path => new FileInfo(path))
-            .Where(file => !string.Equals(file.FullName, activeFullPath, StringComparison.OrdinalIgnoreCase))
-            .OrderByDescending(file => file.CreationTimeUtc)
-            .ToList();
-
-        var cutoff = DateTime.UtcNow.AddDays(-Math.Max(0, config.ScreenshotRetentionDays));
-        var keepCount = Math.Max(0, config.ScreenshotRetentionCount);
-
-        for (var i = 0; i < files.Count; i++)
-        {
-            var file = files[i];
-            if (file.CreationTimeUtc >= cutoff && i < keepCount)
+            if (activePath is not null && (DateTime.UtcNow - _lastCleanup) < TimeSpan.FromMinutes(5))
             {
-                continue;
+                return;
             }
 
-            TryDelete(file.FullName);
+            _lastCleanup = DateTime.UtcNow;
+            var activeFullPath = string.IsNullOrWhiteSpace(activePath) ? null : Path.GetFullPath(activePath);
+            var files = Directory.EnumerateFiles(_directory, "ScreenPeekr_*.png")
+                .Select(path => new FileInfo(path))
+                .Where(file => !string.Equals(file.FullName, activeFullPath, StringComparison.OrdinalIgnoreCase))
+                .OrderByDescending(file => file.CreationTimeUtc)
+                .ToList();
+
+            var cutoff = DateTime.UtcNow.AddDays(-Math.Max(0, config.ScreenshotRetentionDays));
+            var keepCount = Math.Max(0, config.ScreenshotRetentionCount);
+
+            for (var i = 0; i < files.Count; i++)
+            {
+                var file = files[i];
+                if (file.CreationTimeUtc >= cutoff && i < keepCount)
+                {
+                    continue;
+                }
+
+                TryDelete(file.FullName);
+            }
+        }
+        catch
+        {
         }
     }
 

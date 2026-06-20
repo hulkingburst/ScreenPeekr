@@ -17,9 +17,17 @@ internal sealed class ScreenshotCaptureService : IDisposable
         var path = _cleanup.CreatePath();
         using var bitmap = new Bitmap(monitor.Bounds.Width, monitor.Bounds.Height, PixelFormat.Format32bppArgb);
         using var graphics = Graphics.FromImage(bitmap);
-        graphics.CopyFromScreen(monitor.Bounds.Left, monitor.Bounds.Top, 0, 0, monitor.Bounds.Size, CopyPixelOperation.SourceCopy);
-        bitmap.Save(path, ImageFormat.Png);
-        return path;
+        try
+        {
+            graphics.CopyFromScreen(monitor.Bounds.Left, monitor.Bounds.Top, 0, 0, monitor.Bounds.Size, CopyPixelOperation.SourceCopy);
+            bitmap.Save(path, ImageFormat.Png);
+            return path;
+        }
+        catch
+        {
+            ScreenshotCleanupService.TryDelete(path);
+            throw;
+        }
     }
 
     public void Dispose()

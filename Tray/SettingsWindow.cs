@@ -16,6 +16,12 @@ internal sealed class SettingsWindow : Form
     private Button _keyBinderButton = null!;
     private NumericUpDown _inputDelayNumeric = null!;
     private CheckBox _startupCheckBox = null!;
+    private CheckBox _enableChangeDetectionCheckBox = null!;
+    private NumericUpDown _changeDetectionSensitivityNumeric = null!;
+    private CheckBox _awayOnlyModeCheckBox = null!;
+    private NumericUpDown _awayIdleThresholdNumeric = null!;
+    private NumericUpDown _retentionDaysNumeric = null!;
+    private NumericUpDown _retentionCountNumeric = null!;
     private Keys _selectedKey = Keys.None;
 
     public SettingsWindow(
@@ -40,7 +46,7 @@ internal sealed class SettingsWindow : Form
         StartPosition = FormStartPosition.CenterScreen;
         MinimizeBox = false;
         MaximizeBox = false;
-        ClientSize = new Size(500, 380);
+        ClientSize = new Size(500, 680);
 
         // Webhook URL
         var webhookLabel = new Label
@@ -152,13 +158,141 @@ internal sealed class SettingsWindow : Form
             Height = 24
         };
 
+        // Change Detection
+        var changeDetectionLabel = new Label
+        {
+            Text = "Change Detection:",
+            Left = 12,
+            Top = 341,
+            Width = 200,
+            Height = 20
+        };
+
+        _enableChangeDetectionCheckBox = new CheckBox
+        {
+            Text = "Enable Change Detection",
+            Left = 12,
+            Top = 364,
+            Width = 200,
+            Height = 24
+        };
+
+        var sensitivityLabel = new Label
+        {
+            Text = "Sensitivity (0=Very Sensitive, 100=Very Strict):",
+            Left = 12,
+            Top = 398,
+            Width = 300,
+            Height = 20
+        };
+
+        _changeDetectionSensitivityNumeric = new NumericUpDown
+        {
+            Left = 12,
+            Top = 421,
+            Width = 120,
+            Height = 25,
+            Minimum = 0,
+            Maximum = 100,
+            Value = 50
+        };
+
+        // Away Only Mode
+        var awayOnlyLabel = new Label
+        {
+            Text = "Away-Only Mode:",
+            Left = 12,
+            Top = 456,
+            Width = 200,
+            Height = 20
+        };
+
+        _awayOnlyModeCheckBox = new CheckBox
+        {
+            Text = "Capture only when user is away",
+            Left = 12,
+            Top = 479,
+            Width = 250,
+            Height = 24
+        };
+
+        var awayThresholdLabel = new Label
+        {
+            Text = "Away Idle Threshold (seconds):",
+            Left = 12,
+            Top = 513,
+            Width = 250,
+            Height = 20
+        };
+
+        _awayIdleThresholdNumeric = new NumericUpDown
+        {
+            Left = 12,
+            Top = 536,
+            Width = 120,
+            Height = 25,
+            Minimum = 1,
+            Maximum = 3600,
+            Value = 300
+        };
+
+        // Screenshot Retention
+        var retentionLabel = new Label
+        {
+            Text = "Screenshot Retention:",
+            Left = 12,
+            Top = 571,
+            Width = 200,
+            Height = 20
+        };
+
+        var retentionDaysLabel = new Label
+        {
+            Text = "Retention Days (0=unlimited):",
+            Left = 12,
+            Top = 594,
+            Width = 200,
+            Height = 20
+        };
+
+        _retentionDaysNumeric = new NumericUpDown
+        {
+            Left = 12,
+            Top = 617,
+            Width = 120,
+            Height = 25,
+            Minimum = 0,
+            Maximum = 365,
+            Value = 1
+        };
+
+        var retentionCountLabel = new Label
+        {
+            Text = "Max Screenshots to Keep (0=unlimited):",
+            Left = 250,
+            Top = 594,
+            Width = 230,
+            Height = 20
+        };
+
+        _retentionCountNumeric = new NumericUpDown
+        {
+            Left = 250,
+            Top = 617,
+            Width = 120,
+            Height = 25,
+            Minimum = 0,
+            Maximum = 1000,
+            Value = 50
+        };
+
         // Buttons
         var saveButton = new Button
         {
             Text = "Save",
             Left = 320,
             Width = 80,
-            Top = 340,
+            Top = 640,
             DialogResult = DialogResult.OK
         };
         saveButton.Click += (_, _) => SaveSettings();
@@ -168,7 +302,7 @@ internal sealed class SettingsWindow : Form
             Text = "Cancel",
             Left = 408,
             Width = 80,
-            Top = 340,
+            Top = 640,
             DialogResult = DialogResult.Cancel
         };
 
@@ -180,6 +314,12 @@ internal sealed class SettingsWindow : Form
             inputLabel, _keyBinderButton,
             delayLabel, _inputDelayNumeric,
             _startupCheckBox,
+            changeDetectionLabel, _enableChangeDetectionCheckBox,
+            sensitivityLabel, _changeDetectionSensitivityNumeric,
+            awayOnlyLabel, _awayOnlyModeCheckBox,
+            awayThresholdLabel, _awayIdleThresholdNumeric,
+            retentionLabel, retentionDaysLabel, _retentionDaysNumeric,
+            retentionCountLabel, _retentionCountNumeric,
             saveButton, cancelButton
         });
 
@@ -195,6 +335,12 @@ internal sealed class SettingsWindow : Form
         _keyBinderButton.Text = _selectedKey == Keys.None ? "Click to Bind Key" : $"Bound: {_selectedKey}";
         _inputDelayNumeric.Value = _configStore.Config.InputDelayMs;
         _startupCheckBox.Checked = _configStore.Config.StartWithWindows;
+        _enableChangeDetectionCheckBox.Checked = _configStore.Config.EnableChangeDetection;
+        _changeDetectionSensitivityNumeric.Value = _configStore.Config.ChangeDetectionSensitivity;
+        _awayOnlyModeCheckBox.Checked = _configStore.Config.AwayOnlyMode;
+        _awayIdleThresholdNumeric.Value = _configStore.Config.AwayIdleThresholdSeconds;
+        _retentionDaysNumeric.Value = _configStore.Config.ScreenshotRetentionDays;
+        _retentionCountNumeric.Value = _configStore.Config.ScreenshotRetentionCount;
 
         // Load monitors
         var monitors = new List<MonitorInfo>();
@@ -241,6 +387,12 @@ internal sealed class SettingsWindow : Form
         _configStore.Config.PreScreenshotKeys = _selectedKey != Keys.None ? new List<Keys> { _selectedKey } : new List<Keys>();
         _configStore.Config.InputDelayMs = (int)_inputDelayNumeric.Value;
         _configStore.Config.StartWithWindows = _startupCheckBox.Checked;
+        _configStore.Config.EnableChangeDetection = _enableChangeDetectionCheckBox.Checked;
+        _configStore.Config.ChangeDetectionSensitivity = (int)_changeDetectionSensitivityNumeric.Value;
+        _configStore.Config.AwayOnlyMode = _awayOnlyModeCheckBox.Checked;
+        _configStore.Config.AwayIdleThresholdSeconds = (int)_awayIdleThresholdNumeric.Value;
+        _configStore.Config.ScreenshotRetentionDays = (int)_retentionDaysNumeric.Value;
+        _configStore.Config.ScreenshotRetentionCount = (int)_retentionCountNumeric.Value;
 
         if (_monitorComboBox.SelectedItem is MonitorInfo selectedMonitor)
         {

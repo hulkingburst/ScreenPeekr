@@ -13,6 +13,7 @@ internal sealed class AppConfig
     public List<Keys> PostScreenshotKeys { get; set; } = new();
     public int InputDelayMs { get; set; } = 250;
     public int KeyHoldDurationMs { get; set; } = 50;
+    public bool EnableChangeDetection { get; set; } = true;
     public int ChangeDetectionSensitivity { get; set; } = 50;
     public bool AwayOnlyMode { get; set; }
     public int AwayIdleThresholdSeconds { get; set; } = 300;

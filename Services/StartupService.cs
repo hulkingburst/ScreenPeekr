@@ -9,19 +9,25 @@ internal sealed class StartupService : IDisposable
 
     public void SetStartWithWindows(bool enabled)
     {
-        using var key = Registry.CurrentUser.OpenSubKey(RunKeyPath, writable: true);
-        if (key is null)
+        try
         {
-            return;
-        }
+            using var key = Registry.CurrentUser.OpenSubKey(RunKeyPath, writable: true);
+            if (key is null)
+            {
+                return;
+            }
 
-        if (enabled)
-        {
-            key.SetValue(AppName, $"\"{Application.ExecutablePath}\"");
+            if (enabled)
+            {
+                key.SetValue(AppName, $"\"{Application.ExecutablePath}\"");
+            }
+            else
+            {
+                key.DeleteValue(AppName, throwOnMissingValue: false);
+            }
         }
-        else
+        catch
         {
-            key.DeleteValue(AppName, throwOnMissingValue: false);
         }
     }
 

@@ -11,12 +11,25 @@ internal sealed class EventLogStore : IDisposable
 
     public void Record(string message)
     {
-        File.AppendAllLines(_logPath, new[] { $"{DateTime.Now:yyyy-MM-dd HH:mm:ss} - {message}" });
+        try
+        {
+            File.AppendAllLines(_logPath, new[] { $"{DateTime.Now:yyyy-MM-dd HH:mm:ss} - {message}" });
+        }
+        catch
+        {
+        }
     }
 
     public string ReadAll()
     {
-        return File.Exists(_logPath) ? File.ReadAllText(_logPath) : string.Empty;
+        try
+        {
+            return File.Exists(_logPath) ? File.ReadAllText(_logPath) : string.Empty;
+        }
+        catch
+        {
+            return string.Empty;
+        }
     }
 
     public void Dispose()

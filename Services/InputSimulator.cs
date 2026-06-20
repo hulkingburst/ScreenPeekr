@@ -39,100 +39,128 @@ internal static class InputSimulator
 
     public static async Task SendKeysAsync(IEnumerable<System.Windows.Forms.Keys> keys, int delayMs, int holdDurationMs, CancellationToken cancellationToken)
     {
-        foreach (var key in keys.Where(key => key != System.Windows.Forms.Keys.None))
+        try
         {
-            cancellationToken.ThrowIfCancellationRequested();
-            SendKeyDown((ushort)key);
-            if (holdDurationMs > 0)
+            foreach (var key in keys.Where(key => key != System.Windows.Forms.Keys.None))
             {
-                await Task.Delay(holdDurationMs, cancellationToken);
-            }
+                cancellationToken.ThrowIfCancellationRequested();
+                SendKeyDown((ushort)key);
+                if (holdDurationMs > 0)
+                {
+                    await Task.Delay(holdDurationMs, cancellationToken);
+                }
 
-            SendKeyUp((ushort)key);
-            if (delayMs > 0)
-            {
-                await Task.Delay(delayMs, cancellationToken);
+                SendKeyUp((ushort)key);
+                if (delayMs > 0)
+                {
+                    await Task.Delay(delayMs, cancellationToken);
+                }
             }
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch
+        {
         }
     }
 
     public static void SendKey(ushort virtualKeyCode)
     {
-        var inputs = new INPUT[2];
-
-        // Key Down
-        inputs[0] = new INPUT
+        try
         {
-            type = INPUT_KEYBOARD,
-            u = new INPUTUnion
-            {
-                ki = new KEYBDINPUT
-                {
-                    wVk = virtualKeyCode,
-                    wScan = 0,
-                    dwFlags = 0,
-                    time = 0,
-                    dwExtraInfo = IntPtr.Zero
-                }
-            }
-        };
+            var inputs = new INPUT[2];
 
-        // Key Up
-        inputs[1] = new INPUT
+            // Key Down
+            inputs[0] = new INPUT
+            {
+                type = INPUT_KEYBOARD,
+                u = new INPUTUnion
+                {
+                    ki = new KEYBDINPUT
+                    {
+                        wVk = virtualKeyCode,
+                        wScan = 0,
+                        dwFlags = 0,
+                        time = 0,
+                        dwExtraInfo = IntPtr.Zero
+                    }
+                }
+            };
+
+            // Key Up
+            inputs[1] = new INPUT
+            {
+                type = INPUT_KEYBOARD,
+                u = new INPUTUnion
+                {
+                    ki = new KEYBDINPUT
+                    {
+                        wVk = virtualKeyCode,
+                        wScan = 0,
+                        dwFlags = KEYEVENTF_KEYUP,
+                        time = 0,
+                        dwExtraInfo = IntPtr.Zero
+                    }
+                }
+            };
+
+            SendInput(2, inputs, Marshal.SizeOf(typeof(INPUT)));
+        }
+        catch
         {
-            type = INPUT_KEYBOARD,
-            u = new INPUTUnion
-            {
-                ki = new KEYBDINPUT
-                {
-                    wVk = virtualKeyCode,
-                    wScan = 0,
-                    dwFlags = KEYEVENTF_KEYUP,
-                    time = 0,
-                    dwExtraInfo = IntPtr.Zero
-                }
-            }
-        };
-
-        SendInput(2, inputs, Marshal.SizeOf(typeof(INPUT)));
+        }
     }
 
     private static void SendKeyDown(ushort virtualKeyCode)
     {
-        SendInput(1, new[]
+        try
         {
-            new INPUT
+            SendInput(1, new[]
             {
-                type = INPUT_KEYBOARD,
-                u = new INPUTUnion
+                new INPUT
                 {
-                    ki = new KEYBDINPUT
+                    type = INPUT_KEYBOARD,
+                    u = new INPUTUnion
                     {
-                        wVk = virtualKeyCode,
-                        dwExtraInfo = IntPtr.Zero
+                        ki = new KEYBDINPUT
+                        {
+                            wVk = virtualKeyCode,
+                            dwExtraInfo = IntPtr.Zero
+                        }
                     }
                 }
-            }
-        }, Marshal.SizeOf(typeof(INPUT)));
+            }, Marshal.SizeOf(typeof(INPUT)));
+        }
+        catch
+        {
+        }
     }
 
     private static void SendKeyUp(ushort virtualKeyCode)
     {
-        SendInput(1, new[]
+        try
         {
-            new INPUT
+            SendInput(1, new[]
             {
-                type = INPUT_KEYBOARD,
-                u = new INPUTUnion
+                new INPUT
                 {
-                    ki = new KEYBDINPUT
+                    type = INPUT_KEYBOARD,
+                    u = new INPUTUnion
                     {
-                        wVk = virtualKeyCode,
-                        dwFlags = KEYEVENTF_KEYUP,
-                        dwExtraInfo = IntPtr.Zero
+                        ki = new KEYBDINPUT
+                        {
+                            wVk = virtualKeyCode,
+                            dwFlags = KEYEVENTF_KEYUP,
+                            dwExtraInfo = IntPtr.Zero
+                        }
                     }
                 }
-            }
-        }, Marshal.SizeOf(typeof(INPUT)));
+            }, Marshal.SizeOf(typeof(INPUT)));
+        }
+        catch
+        {
+        }
     }
 }

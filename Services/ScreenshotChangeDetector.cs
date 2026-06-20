@@ -7,6 +7,7 @@ internal sealed class ScreenshotChangeDetector
 {
     private const int SampleWidth = 64;
     private const int SampleHeight = 36;
+    private const int PixelDeltaThreshold = 30;
     private readonly object _sync = new();
     private Bitmap? _previousSample;
 
@@ -62,7 +63,7 @@ internal sealed class ScreenshotChangeDetector
                 var a = previous.GetPixel(x, y);
                 var b = current.GetPixel(x, y);
                 var delta = Math.Abs(a.R - b.R) + Math.Abs(a.G - b.G) + Math.Abs(a.B - b.B);
-                if (delta > 30)
+                if (delta > PixelDeltaThreshold)
                 {
                     changed++;
                 }

@@ -9,17 +9,24 @@ internal sealed class MonitorCatalog : IDisposable
 {
     public IReadOnlyList<MonitorInfo> GetMonitors()
     {
-        var wmiNames = GetWmiMonitorNames();
-        return Screen.AllScreens
-            .Select((screen, index) =>
-            {
-                var friendlyName = TryGetFriendlyMonitorName(screen.DeviceName, wmiNames);
-                var displayName = string.IsNullOrWhiteSpace(friendlyName)
-                    ? $"Display {index + 1}"
-                    : friendlyName;
-                return new MonitorInfo(screen.DeviceName, displayName, screen.Bounds);
-            })
-            .ToList();
+        try
+        {
+            var wmiNames = GetWmiMonitorNames();
+            return Screen.AllScreens
+                .Select((screen, index) =>
+                {
+                    var friendlyName = TryGetFriendlyMonitorName(screen.DeviceName, wmiNames);
+                    var displayName = string.IsNullOrWhiteSpace(friendlyName)
+                        ? $"Display {index + 1}"
+                        : friendlyName;
+                    return new MonitorInfo(screen.DeviceName, displayName, screen.Bounds);
+                })
+                .ToList();
+        }
+        catch
+        {
+            return new List<MonitorInfo>();
+        }
     }
 
     public MonitorInfo GetSelectedOrDefault(string selectedMonitorId)

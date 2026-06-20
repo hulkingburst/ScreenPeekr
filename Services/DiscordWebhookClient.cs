@@ -29,6 +29,11 @@ internal sealed class DiscordWebhookClient : IDisposable
             throw new InvalidOperationException("Discord webhook URL is not configured.");
         }
 
+        if (!File.Exists(imagePath))
+        {
+            throw new FileNotFoundException("Screenshot file not found.", imagePath);
+        }
+
         using var form = new MultipartFormDataContent();
         var payload = new
         {
