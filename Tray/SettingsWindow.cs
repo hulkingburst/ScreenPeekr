@@ -62,9 +62,19 @@ internal sealed class SettingsWindow : Form
         {
             Left = 12,
             Top = 35,
-            Width = 476,
+            Width = 440,
             Height = 25
         };
+
+        var webhookHelpButton = new Button
+        {
+            Text = "?",
+            Left = 460,
+            Top = 35,
+            Width = 28,
+            Height = 25
+        };
+        webhookHelpButton.Click += (_, _) => ShowWebhookInstructions();
 
         // Interval
         var intervalLabel = new Label
@@ -308,7 +318,7 @@ internal sealed class SettingsWindow : Form
 
         Controls.AddRange(new Control[]
         {
-            webhookLabel, _webhookUrlTextBox,
+            webhookLabel, _webhookUrlTextBox, webhookHelpButton,
             intervalLabel, _intervalNumeric,
             monitorLabel, _monitorComboBox,
             inputLabel, _keyBinderButton,
@@ -325,6 +335,12 @@ internal sealed class SettingsWindow : Form
 
         AcceptButton = saveButton;
         CancelButton = cancelButton;
+    }
+
+    private void ShowWebhookInstructions()
+    {
+        using var instructionsWindow = new WebhookInstructionsWindow();
+        instructionsWindow.ShowDialog(this);
     }
 
     private void LoadCurrentSettings()
