@@ -120,11 +120,11 @@
   "project": {
     "version": "4.0.0-beta",
     "restore": {
-      "projectUniqueName": "c:\\dev\\ScreenPeekr-v5.0.0\\ScreenPeekr-v5.0.0\\ScreenPeekr.csproj",
+      "projectUniqueName": "C:\\dev\\ScreenPeekr-v5.0.0\\ScreenPeekr-v5.0.0\\ScreenPeekr.csproj",
       "projectName": "ScreenPeekr",
-      "projectPath": "c:\\dev\\ScreenPeekr-v5.0.0\\ScreenPeekr-v5.0.0\\ScreenPeekr.csproj",
+      "projectPath": "C:\\dev\\ScreenPeekr-v5.0.0\\ScreenPeekr-v5.0.0\\ScreenPeekr.csproj",
       "packagesPath": "C:\\Users\\renow\\.nuget\\packages\\",
-      "outputPath": "c:\\dev\\ScreenPeekr-v5.0.0\\ScreenPeekr-v5.0.0\\obj\\",
+      "outputPath": "C:\\dev\\ScreenPeekr-v5.0.0\\ScreenPeekr-v5.0.0\\obj\\",
       "projectStyle": "PackageReference",
       "configFilePaths": [
         "C:\\Users\\renow\\AppData\\Roaming\\NuGet\\NuGet.Config"
