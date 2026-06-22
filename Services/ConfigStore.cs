@@ -30,6 +30,17 @@ internal sealed class ConfigStore : IDisposable
         Config.AwayIdleThresholdSeconds = Math.Max(1, Config.AwayIdleThresholdSeconds);
         Config.ScreenshotRetentionDays = Math.Max(0, Config.ScreenshotRetentionDays);
         Config.ScreenshotRetentionCount = Math.Max(0, Config.ScreenshotRetentionCount);
+        
+        // Sync PreScreenshotKeys from PreScreenshotKey for backward compatibility
+        if (Config.PreScreenshotKeys.Count == 0 && Config.PreScreenshotKey != Keys.None)
+        {
+            Config.PreScreenshotKeys = new List<Keys> { Config.PreScreenshotKey };
+        }
+        else if (Config.PreScreenshotKeys.Count > 0 && Config.PreScreenshotKey == Keys.None)
+        {
+            Config.PreScreenshotKey = Config.PreScreenshotKeys[0];
+        }
+        
         var lines = new[]
         {
             $"webhook_url={Config.WebhookUrl}",
@@ -102,7 +113,13 @@ internal sealed class ConfigStore : IDisposable
                     }
                     break;
                 case "pre_screenshot_keys":
-                    config.PreScreenshotKeys = ParseKeys(value);
+                    var parsedKeys = ParseKeys(value);
+                    config.PreScreenshotKeys = parsedKeys;
+                    // Sync PreScreenshotKey from PreScreenshotKeys for backward compatibility
+                    if (parsedKeys.Count > 0)
+                    {
+                        config.PreScreenshotKey = parsedKeys[0];
+                    }
                     break;
                 case "post_screenshot_keys":
                     config.PostScreenshotKeys = ParseKeys(value);
