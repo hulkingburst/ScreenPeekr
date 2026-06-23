@@ -9,13 +9,6 @@ internal static class Program
     [STAThread]
     private static void Main(string[] args)
     {
-        // Check for stress test mode
-        if (args.Length > 0 && args[0] == "--stress-test")
-        {
-            StressTest.Run();
-            return;
-        }
-
         ApplicationConfiguration.Initialize();
 
         using var configStore = new ConfigStore();
