@@ -28,7 +28,15 @@ internal static class IdleStateService
 
         var tickCount = Environment.TickCount64;
         var lastInput = info.dwTime;
-        var idleMilliseconds = Math.Max(0, tickCount - lastInput);
+        
+        // Handle 32-bit wraparound (dwTime wraps every 49.7 days)
+        var adjustedLastInput = lastInput;
+        while (tickCount - adjustedLastInput < 0)
+        {
+            adjustedLastInput += uint.MaxValue;
+        }
+        
+        var idleMilliseconds = Math.Max(0, tickCount - adjustedLastInput);
         return TimeSpan.FromMilliseconds(idleMilliseconds);
     }
 

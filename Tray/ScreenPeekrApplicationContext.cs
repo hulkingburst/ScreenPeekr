@@ -23,6 +23,9 @@ internal sealed class ScreenPeekrApplicationContext : ApplicationContext
     private bool _uploadInProgress;
     private bool _usingMonitorFallback;
     private TrayState _trayState = TrayState.Off;
+    private readonly object _uploadLock = new();
+    private MonitorInfo? _cachedMonitor;
+    private DateTime _monitorCacheTime = DateTime.MinValue;
 
     public ScreenPeekrApplicationContext(
         ConfigStore configStore,
@@ -197,12 +200,16 @@ internal sealed class ScreenPeekrApplicationContext : ApplicationContext
 
     private async Task ExecuteScreenshotCycleAsync(CancellationToken token)
     {
-        if (_uploadInProgress)
+        lock (_uploadLock)
         {
-            return;
+            if (_uploadInProgress)
+            {
+                _eventLog.Record("Capture skipped: upload already in progress");
+                return;
+            }
+            _uploadInProgress = true;
         }
 
-        _uploadInProgress = true;
         string? screenshotPath = null;
         try
         {
@@ -223,13 +230,20 @@ internal sealed class ScreenPeekrApplicationContext : ApplicationContext
             screenshotPath = _capture.CaptureToTempPng(monitor);
             await SendConfiguredInputsAsync(_configStore.Config.PostScreenshotKeys, "Post-screenshot input", token);
 
-            if (_configStore.Config.EnableChangeDetection && !_changeDetector.HasMeaningfulChange(screenshotPath, _configStore.Config.ChangeDetectionSensitivity))
+            if (_configStore.Config.EnableChangeDetection)
             {
-                _stats.ScreenshotsSkippedNoChange++;
-                _eventLog.Record("Upload skipped: no meaningful screenshot change detected");
-                ScreenshotCleanupService.TryDelete(screenshotPath);
-                screenshotPath = null;
-                return;
+                if (!File.Exists(screenshotPath))
+                {
+                    _eventLog.Record("Change detection skipped: screenshot file not found");
+                }
+                else if (!_changeDetector.HasMeaningfulChange(screenshotPath, _configStore.Config.ChangeDetectionSensitivity))
+                {
+                    _stats.ScreenshotsSkippedNoChange++;
+                    _eventLog.Record("Upload skipped: no meaningful screenshot change detected");
+                    ScreenshotCleanupService.TryDelete(screenshotPath);
+                    screenshotPath = null;
+                    return;
+                }
             }
 
             await _uploader.UploadScreenshotAsync(_configStore.Config.WebhookUrl, screenshotPath, "Screenshot", token);
@@ -245,23 +259,34 @@ internal sealed class ScreenPeekrApplicationContext : ApplicationContext
         finally
         {
             _cleanup.Cleanup(_configStore.Config, screenshotPath);
-            _uploadInProgress = false;
+            lock (_uploadLock)
+            {
+                _uploadInProgress = false;
+            }
         }
     }
 
     private async Task SendScreenshotAsync(bool manual, CancellationToken cancellationToken = default)
     {
-        if (_uploadInProgress)
+        lock (_uploadLock)
         {
-            return;
+            if (_uploadInProgress)
+            {
+                _eventLog.Record("Capture skipped: upload already in progress");
+                return;
+            }
+            _uploadInProgress = true;
         }
 
-        _uploadInProgress = true;
         string? screenshotPath = null;
         try
         {
+            await SendConfiguredInputsAsync(_configStore.Config.PreScreenshotKeys, "Pre-screenshot input", cancellationToken);
+
             var monitor = ResolveSelectedMonitor();
             screenshotPath = _capture.CaptureToTempPng(monitor);
+            await SendConfiguredInputsAsync(_configStore.Config.PostScreenshotKeys, "Post-screenshot input", cancellationToken);
+
             await _uploader.UploadScreenshotAsync(
                 _configStore.Config.WebhookUrl,
                 screenshotPath,
@@ -285,7 +310,10 @@ internal sealed class ScreenPeekrApplicationContext : ApplicationContext
         finally
         {
             _cleanup.Cleanup(_configStore.Config, screenshotPath);
-            _uploadInProgress = false;
+            lock (_uploadLock)
+            {
+                _uploadInProgress = false;
+            }
         }
     }
 
@@ -312,11 +340,29 @@ internal sealed class ScreenPeekrApplicationContext : ApplicationContext
             return;
         }
 
-        await InputSimulator.SendKeysAsync(keys, _configStore.Config.InputDelayMs, _configStore.Config.KeyHoldDurationMs, token);
-        _eventLog.Record($"{label} sent: {FormatKeys(keys)}");
+        var success = await InputSimulator.SendKeysAsync(keys, _configStore.Config.InputDelayMs, _configStore.Config.KeyHoldDurationMs, token);
+        if (success)
+        {
+            _eventLog.Record($"{label} sent: {FormatKeys(keys)}");
+        }
+        else
+        {
+            _eventLog.Record($"{label} failed: {FormatKeys(keys)}");
+        }
     }
 
     private MonitorInfo ResolveSelectedMonitor()
+    {
+        // Refresh cache every 5 seconds or on first call
+        if (_cachedMonitor == null || (DateTime.Now - _monitorCacheTime).TotalSeconds > 5)
+        {
+            _cachedMonitor = ResolveSelectedMonitorInternal();
+            _monitorCacheTime = DateTime.Now;
+        }
+        return _cachedMonitor;
+    }
+
+    private MonitorInfo ResolveSelectedMonitorInternal()
     {
         if (string.Equals(_configStore.Config.SelectedMonitor, "ALL", StringComparison.OrdinalIgnoreCase))
         {

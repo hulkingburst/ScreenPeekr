@@ -37,7 +37,7 @@ internal static class InputSimulator
     [DllImport("user32.dll")]
     public static extern IntPtr GetForegroundWindow();
 
-    public static async Task SendKeysAsync(IEnumerable<System.Windows.Forms.Keys> keys, int delayMs, int holdDurationMs, CancellationToken cancellationToken)
+    public static async Task<bool> SendKeysAsync(IEnumerable<System.Windows.Forms.Keys> keys, int delayMs, int holdDurationMs, CancellationToken cancellationToken)
     {
         try
         {
@@ -56,13 +56,17 @@ internal static class InputSimulator
                     await Task.Delay(delayMs, cancellationToken);
                 }
             }
+            return true;
         }
         catch (OperationCanceledException)
         {
             throw;
         }
-        catch
+        catch (Exception ex)
         {
+            // Log the exception - caller should handle logging
+            System.Diagnostics.Debug.WriteLine($"Input simulation failed: {ex.Message}");
+            return false;
         }
     }
 

@@ -25,8 +25,10 @@ internal sealed class ScreenshotChangeDetector
             }
 
             var changedPercent = CalculateChangedPercent(_previousSample, current);
-            _previousSample.Dispose();
+            
+            var oldSample = _previousSample;
             _previousSample = (Bitmap)current.Clone();
+            oldSample.Dispose();
 
             return changedPercent >= GetThresholdPercent(sensitivity);
         }
